@@ -16,13 +16,14 @@ import (
 )
 
 func main() {
+	// Create ARI client
+	// TODO: Move credentials to config or environment variables
 	clientOptions := native.Options{
-		Application:  "ai-ivr-app",
+		Application:  "app",
 		Username:     "ari_user",
 		Password:     "password",
 		URL:          "http://192.168.122.113:8088/ari",
-		WebsocketURL: "ws://192.168.122.113:8088/ari/events?app=ai-ivr-app&api_key=ari_user:password",
-		SubscribeAll: true,
+		WebsocketURL: "ws://192.168.122.113:8088/ari/events?app=app&api_key=ari_user:password",
 	}
 
 	cl, err := native.Connect(&clientOptions)
@@ -37,10 +38,35 @@ func main() {
 	log.Info("connected", "url", clientOptions.URL)
 	defer cl.Close()
 
+	// Context for managing shutdown
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Signal handling for graceful shutdown
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
+	go func() {
+		<-sigs
+		log.Warn("Shutdown request!")
+		cancel()
+	}()
+
+	eventCh := cl.Bus().Subscribe(nil, "StasisStart", "StasisEnd")
+	defer eventCh.Cancel()
+	log.Info("Client ARI started, waiting for StasisStart and StasisEnd event ...", "LISTEN_EVENT", "TRUE")
+
+	for {
+		select {
+		case <-ctx.Done():
+			log.Warn("context cancelled, exiting ...")
+			return
+		case evt, ok := <-eventCh.Events():
+			if !ok {
+				log.Warn("event channel closed")
+				return
+			}
+			log.Info("New event", "Type", evt.GetType(), "Application", evt.GetApplication())
+		}
+	}
 }
