@@ -10,7 +10,7 @@ import (
 	// "os/signal"
 	// "syscall"
 	//
-	// "github.com/CyCoreSystems/ari/v5"
+	"github.com/CyCoreSystems/ari/v5"
 	"github.com/CyCoreSystems/ari/v5/client/native"
 	"github.com/charmbracelet/log"
 )
@@ -61,12 +61,39 @@ func main() {
 		case <-ctx.Done():
 			log.Warn("context cancelled, exiting ...")
 			return
+
 		case evt, ok := <-eventCh.Events():
 			if !ok {
 				log.Warn("event channel closed")
 				return
 			}
 			log.Info("New event", "Type", evt.GetType(), "Application", evt.GetApplication())
+
+			if evt.GetType() == "StasisStart" {
+				c := evt.(*ari.StasisStart)
+				go app(ctx, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)))
+			}
 		}
 	}
+}
+
+func app(ctx context.Context, h *ari.ChannelHandle) {
+	h.Answer()
+	defer h.Hangup()
+
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
+	log.Info("Runnign app", "Channel", h.ID())
+	end := h.Subscribe(ari.Events.StasisEnd)
+	defer end.Cancel()
+
+	//End the app when the channel goes away
+	go func() {
+		<-end.Events()
+		cancel()
+	}()
+
+	// if err := pl
+	log.Info("Something happen", "Action", true)
 }
