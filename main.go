@@ -6,12 +6,9 @@ import (
 	"os/signal"
 	"syscall"
 
-	// "os"
-	// "os/signal"
-	// "syscall"
-	//
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/CyCoreSystems/ari/v5/client/native"
+	"github.com/CyCoreSystems/ari/v5/ext/play"
 	"github.com/charmbracelet/log"
 )
 
@@ -85,6 +82,14 @@ func app(ctx context.Context, h *ari.ChannelHandle) {
 	defer cancel()
 
 	log.Info("Runnign app", "Channel", h.ID())
+
+	//Welcomming message
+	if err := play.Play(ctx, h, play.URI("sound:hello-world")).Err(); err != nil {
+		log.Error("Failed to play hello message", "err", err)
+		cancel()
+	}
+	log.Info("Played welcome message")
+
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
 
@@ -94,6 +99,4 @@ func app(ctx context.Context, h *ari.ChannelHandle) {
 		cancel()
 	}()
 
-	// if err := pl
-	log.Info("Something happen", "Action", true)
 }
