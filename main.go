@@ -68,13 +68,13 @@ func main() {
 
 			if evt.GetType() == "StasisStart" {
 				c := evt.(*ari.StasisStart)
-				go app(ctx, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)))
+				go welcome(ctx, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)), cl)
 			}
 		}
 	}
 }
 
-func app(ctx context.Context, h *ari.ChannelHandle) {
+func welcome(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
 	h.Answer()
 	defer h.Hangup()
 
@@ -89,6 +89,7 @@ func app(ctx context.Context, h *ari.ChannelHandle) {
 		cancel()
 	}
 	log.Info("Played welcome message")
+	handleDTMF(client, h)
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
@@ -99,4 +100,20 @@ func app(ctx context.Context, h *ari.ChannelHandle) {
 		cancel()
 	}()
 
+}
+
+func handleDTMF(client ari.Client, ch *ari.ChannelHandle) {
+	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
+	for {
+		e := <-sub.Events()
+		if ev, ok := e.(*ari.ChannelDtmfReceived); ok {
+			if ev.Channel.ID == ch.ID() {
+				switch ev.Digit {
+				case "1":
+					ch.Play("tt-monkeys", "sound:tt-monkeys")
+					log.Info("Recording signal sound played")
+				}
+			}
+		}
+	}
 }
