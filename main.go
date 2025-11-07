@@ -136,6 +136,7 @@ func welcomeMessage(ctx context.Context, ch *ari.ChannelHandle) {
 
 func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 
+	// The default directory for recordings is /var/spool/asterisk/recording/
 	filename := fmt.Sprintf("msg_%s_%d", ch.ID(), time.Now().Unix())
 
 	rec, err := ch.Record(filename, &ari.RecordingOptions{
