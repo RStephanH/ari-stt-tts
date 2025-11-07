@@ -84,11 +84,12 @@ func welcome(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
 	log.Info("Runnign app", "Channel", h.ID())
 
 	//Welcomming message
-	if err := play.Play(ctx, h, play.URI("sound:hello-world")).Err(); err != nil {
-		log.Error("Failed to play hello message", "err", err)
-		cancel()
-	}
-	log.Info("Played welcome message")
+	playSound(ctx, h, "sound:hello-world")
+	// if err := play.Play(ctx, h, play.URI("sound:hello-world")).Err(); err != nil {
+	// 	log.Error("Failed to play hello message", "err", err)
+	// 	cancel()
+	// }
+	// log.Info("Played welcome message")
 	handleDTMF(client, h)
 
 	end := h.Subscribe(ari.Events.StasisEnd)
@@ -116,4 +117,14 @@ func handleDTMF(client ari.Client, ch *ari.ChannelHandle) {
 			}
 		}
 	}
+}
+
+func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) {
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	if err := play.Play(ctx, ch, play.URI(soundURI)).Err(); err != nil {
+		log.Errorf("Failed to play %s error= %v", soundURI, err)
+		cancel()
+	}
+	log.Infof("Played %s", soundURI)
 }
