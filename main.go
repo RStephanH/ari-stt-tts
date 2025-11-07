@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/CyCoreSystems/ari/v5/client/native"
@@ -68,14 +70,15 @@ func main() {
 
 			if evt.GetType() == "StasisStart" {
 				c := evt.(*ari.StasisStart)
-				go welcome(ctx, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)), cl)
+				go app(ctx, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)), cl)
 			}
 		}
 	}
 }
 
-func welcome(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
+func app(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
 	h.Answer()
+	time.Sleep(2 * time.Second)
 	defer h.Hangup()
 
 	ctx, cancel := context.WithCancel(ctx)
@@ -84,13 +87,8 @@ func welcome(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
 	log.Info("Runnign app", "Channel", h.ID())
 
 	//Welcomming message
-	playSound(ctx, h, "sound:hello-world")
-	// if err := play.Play(ctx, h, play.URI("sound:hello-world")).Err(); err != nil {
-	// 	log.Error("Failed to play hello message", "err", err)
-	// 	cancel()
-	// }
-	// log.Info("Played welcome message")
-	handleDTMF(client, h)
+	welcomeMessage(ctx, h)
+	handleDTMF(ctx, client, h)
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
@@ -103,7 +101,8 @@ func welcome(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
 
 }
 
-func handleDTMF(client ari.Client, ch *ari.ChannelHandle) {
+func handleDTMF(ctx context.Context, client ari.Client, ch *ari.ChannelHandle) {
+	// TODO add functionality to handle DTMF events with functions as parameters
 	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
 	for {
 		e := <-sub.Events()
@@ -111,8 +110,9 @@ func handleDTMF(client ari.Client, ch *ari.ChannelHandle) {
 			if ev.Channel.ID == ch.ID() {
 				switch ev.Digit {
 				case "1":
-					ch.Play("tt-monkeys", "sound:tt-monkeys")
-					log.Info("Recording signal sound played")
+					recordingRequest(ctx, ch)
+					// playSound(context.Background(), ch, "sound:rick-astley")
+					// log.Info("Recording signal sound played")
 				}
 			}
 		}
@@ -127,4 +127,31 @@ func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) {
 		cancel()
 	}
 	log.Infof("Played %s", soundURI)
+}
+
+func welcomeMessage(ctx context.Context, ch *ari.ChannelHandle) {
+	playSound(ctx, ch, "sound:welcome-ari")
+
+}
+
+func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
+
+	filename := fmt.Sprintf("msg_%s_%d", ch.ID(), time.Now().Unix())
+
+	rec, err := ch.Record(filename, &ari.RecordingOptions{
+		Format:      "wav",
+		MaxDuration: 120 * time.Second,
+		MaxSilence:  5 * time.Second,
+		Exists:      "overwrite",
+		Beep:        true,
+		Terminate:   "#"})
+
+	if err != nil {
+		log.Errorf("Failed to start recording: %v", err)
+	}
+	log.Info("Started recording", "filename", filename)
+	chanRec := rec.Subscribe("RecordingFinished")
+	<-chanRec.Events()
+	ctx.Done()
+
 }
