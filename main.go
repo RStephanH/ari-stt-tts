@@ -39,6 +39,7 @@ func main() {
 
 	// Context for managing shutdown
 	ctx, cancel := context.WithCancel(context.Background())
+	subCtx, subCancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	// Signal handling for graceful shutdown
@@ -53,6 +54,7 @@ func main() {
 
 	eventCh := cl.Bus().Subscribe(nil, "StasisStart", "StasisEnd")
 	defer eventCh.Cancel()
+	log.Infof("eventCh Type = %T", eventCh)
 	log.Info("Client ARI started, waiting for StasisStart and StasisEnd event ...", "LISTEN_EVENT", "TRUE")
 
 	for {
@@ -70,25 +72,26 @@ func main() {
 
 			if evt.GetType() == "StasisStart" {
 				c := evt.(*ari.StasisStart)
-				go app(ctx, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)), cl)
+				log.Infof("c Type = %T", c)
+				go app(ctx, subCtx, subCancel, cl.Channel().Get(c.Key(ari.ChannelKey, c.Channel.ID)), cl)
 			}
 		}
 	}
 }
 
-func app(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
+func app(mainCtx context.Context, subCtx context.Context, subCancel context.CancelFunc, h *ari.ChannelHandle, client ari.Client) {
 	h.Answer()
 	time.Sleep(2 * time.Second)
 	defer h.Hangup()
 
-	ctx, cancel := context.WithCancel(ctx)
+	mainCtx, cancel := context.WithCancel(mainCtx)
 	defer cancel()
 
 	log.Info("Runnign app", "Channel", h.ID())
 
 	//Welcomming message
-	welcomeMessage(ctx, h)
-	handleDTMF(ctx, client, h)
+	go welcomeMessage(mainCtx, subCtx, subCancel, h)
+	handleDTMF(mainCtx, subCtx, subCancel, client, h)
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
@@ -101,20 +104,34 @@ func app(ctx context.Context, h *ari.ChannelHandle, client ari.Client) {
 
 }
 
-func handleDTMF(ctx context.Context, client ari.Client, ch *ari.ChannelHandle) {
+func handleDTMF(mainCtx context.Context, subCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle) {
 	// TODO add functionality to handle DTMF events with functions as parameters
 	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
+	defer sub.Cancel()
+
+	mainCtx, cancel := context.WithCancel(mainCtx)
+
 	for {
-		e := <-sub.Events()
-		if ev, ok := e.(*ari.ChannelDtmfReceived); ok {
-			if ev.Channel.ID == ch.ID() {
-				switch ev.Digit {
-				case "1":
-					recordingRequest(ctx, ch)
-					// playSound(context.Background(), ch, "sound:rick-astley")
-					// log.Info("Recording signal sound played")
+		select {
+
+		case e := <-sub.Events():
+			if ev, ok := e.(*ari.ChannelDtmfReceived); ok {
+				if ev.Channel.ID == ch.ID() {
+					switch ev.Digit {
+					case "1":
+						go func() {
+							subCancel()
+							log.Info("Stop welcome message should record now")
+
+						}()
+						recordingRequest(mainCtx, ch)
+					}
 				}
 			}
+
+		case <-mainCtx.Done():
+			cancel()
+
 		}
 	}
 }
@@ -129,13 +146,20 @@ func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) {
 	log.Infof("Played %s", soundURI)
 }
 
-func welcomeMessage(ctx context.Context, ch *ari.ChannelHandle) {
-	playSound(ctx, ch, "sound:welcome-ari")
+func welcomeMessage(mainCtx context.Context, subCtx context.Context, subCancel context.CancelFunc, ch *ari.ChannelHandle) {
+	go func() {
+		<-subCtx.Done()
+		log.Info("Abort request of welcomeMessage by dmtf func", "Stop", true)
+
+	}()
+	playSound(mainCtx, ch, "sound:welcome-ari")
 
 }
 
 func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	// The default directory for recordings is /var/spool/asterisk/recording/
 	filename := fmt.Sprintf("msg_%s_%d", ch.ID(), time.Now().Unix())
 
@@ -153,6 +177,7 @@ func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 	log.Info("Started recording", "filename", filename)
 	chanRec := rec.Subscribe("RecordingFinished")
 	<-chanRec.Events()
-	ctx.Done()
+	log.Info("Recording finished", "filename", filename)
+	log.Info("The program should stop now!")
 
 }
