@@ -91,7 +91,12 @@ func app(mainCtx context.Context, subCtx context.Context, subCancel context.Canc
 
 	//Welcomming message
 	go welcomeMessage(mainCtx, subCtx, h)
-	handleDTMF(mainCtx, subCancel, client, h) //First record
+
+	actions := map[string]func(){
+		"1": func() { recordingRequest(mainCtx, h) },
+		"2": func() { playSound(mainCtx, h, "sound:vm-goodbye") },
+	}
+	handleDTMF(mainCtx, subCancel, client, h, actions) //First record
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
@@ -104,7 +109,7 @@ func app(mainCtx context.Context, subCtx context.Context, subCancel context.Canc
 
 }
 
-func handleDTMF(mainCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle) {
+func handleDTMF(mainCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle, actions map[string]func()) {
 	// TODO add functionality to handle DTMF events with functions as parameters
 	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
 	defer sub.Cancel()
@@ -116,16 +121,20 @@ func handleDTMF(mainCtx context.Context, subCancel context.CancelFunc, client ar
 
 		case e := <-sub.Events():
 			if ev, ok := e.(*ari.ChannelDtmfReceived); ok {
+
 				if ev.Channel.ID == ch.ID() {
-					switch ev.Digit {
-					case "1":
+
+					if action, ok := actions[ev.Digit]; ok {
 						go func() {
 							subCancel()
 							log.Info("Stop any Playback message and should record now")
 
 						}()
-						recordingRequest(mainCtx, ch)
+						action()
+					} else {
+						log.Warn("No action defined for this DTMF digit", "Digit", ev.Digit)
 					}
+
 				}
 			}
 
@@ -167,7 +176,8 @@ func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 		MaxSilence:  5 * time.Second,
 		Exists:      "overwrite",
 		Beep:        true,
-		Terminate:   "#"})
+		Terminate:   "#"},
+	)
 
 	go func() {
 		<-ctx.Done()
