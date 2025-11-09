@@ -90,8 +90,8 @@ func app(mainCtx context.Context, subCtx context.Context, subCancel context.Canc
 	log.Info("Runnign app", "Channel", h.ID())
 
 	//Welcomming message
-	go welcomeMessage(mainCtx, subCtx, subCancel, h)
-	handleDTMF(mainCtx, subCtx, subCancel, client, h)
+	go welcomeMessage(mainCtx, subCtx, h)
+	handleDTMF(mainCtx, subCancel, client, h) //First record
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
@@ -104,7 +104,7 @@ func app(mainCtx context.Context, subCtx context.Context, subCancel context.Canc
 
 }
 
-func handleDTMF(mainCtx context.Context, subCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle) {
+func handleDTMF(mainCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle) {
 	// TODO add functionality to handle DTMF events with functions as parameters
 	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
 	defer sub.Cancel()
@@ -121,7 +121,7 @@ func handleDTMF(mainCtx context.Context, subCtx context.Context, subCancel conte
 					case "1":
 						go func() {
 							subCancel()
-							log.Info("Stop welcome message should record now")
+							log.Info("Stop any Playback message and should record now")
 
 						}()
 						recordingRequest(mainCtx, ch)
@@ -146,7 +146,7 @@ func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) {
 	log.Infof("Played %s", soundURI)
 }
 
-func welcomeMessage(mainCtx context.Context, subCtx context.Context, subCancel context.CancelFunc, ch *ari.ChannelHandle) {
+func welcomeMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {
 	go func() {
 		<-subCtx.Done()
 		log.Info("Abort request of welcomeMessage by dmtf func", "Stop", true)
@@ -158,8 +158,6 @@ func welcomeMessage(mainCtx context.Context, subCtx context.Context, subCancel c
 
 func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
 	// The default directory for recordings is /var/spool/asterisk/recording/
 	filename := fmt.Sprintf("msg_%s_%d", ch.ID(), time.Now().Unix())
 
@@ -171,6 +169,12 @@ func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 		Beep:        true,
 		Terminate:   "#"})
 
+	go func() {
+		<-ctx.Done()
+		rec.Stop()
+
+	}()
+
 	if err != nil {
 		log.Errorf("Failed to start recording: %v", err)
 	}
@@ -179,5 +183,9 @@ func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 	<-chanRec.Events()
 	log.Info("Recording finished", "filename", filename)
 	log.Info("The program should stop now!")
+
+}
+
+func firstRecord() {
 
 }
