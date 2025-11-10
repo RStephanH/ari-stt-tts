@@ -7,7 +7,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func DTMFHandl(mainCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle, actions map[string]func()) {
+func DTMFHandl(mainCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle, actions map[string]ChannelHandler) {
 	// TODO add functionality to handle DTMF events with functions as parameters
 	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
 	defer sub.Cancel()
@@ -28,9 +28,9 @@ func DTMFHandl(mainCtx context.Context, subCancel context.CancelFunc, client ari
 							log.Info("Stop any Playback message and should record now")
 
 						}()
-						action()
+						action(mainCtx, ch)
 					} else if ev.Digit == "#" {
-						actions["default"]()
+						actions["default"](mainCtx, ch)
 
 					} else {
 						log.Warn("No action defined for this DTMF digit", "Digit", ev.Digit)
