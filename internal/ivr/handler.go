@@ -8,6 +8,8 @@ import (
 	"github.com/charmbracelet/log"
 )
 
+type ChannelHandler func(ctx context.Context, h *ari.ChannelHandle) error
+
 func Start(ctx context.Context, client ari.Client) {
 	sub := client.Bus().Subscribe(nil, "StasisStart")
 	defer sub.Cancel()
@@ -49,12 +51,12 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 	//Welcomming message
 	go welcomeMessage(mainCtx, subCtx, h)
 
-	actions := map[string]func(){
-		"1":       func() { recordingRequest(mainCtx, h) },
-		"2":       func() { stopCall(mainCtx, h) },
-		"default": func() { doNothing(mainCtx, h) },
-	}
-	DTMFHandl(mainCtx, subCancel, client, h, actions) //First record
+	// actions := map[string]func(){
+	// 	"1":       func() { RecordingRequest(mainCtx, h) },
+	// 	"2":       func() { StopCall(mainCtx, h) },
+	// 	"default": func() { DoNothing(mainCtx, h) },
+	// }
+	DTMFHandl(mainCtx, subCancel, client, h, firstRecord()) //First record
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
@@ -67,12 +69,14 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 
 }
 
-func stopCall(ctx context.Context, h *ari.ChannelHandle) {
-	playSound(ctx, h, "sound:vm-goodbye")
+func StopCall(ctx context.Context, h *ari.ChannelHandle) error {
+	err := playSound(ctx, h, "sound:vm-goodbye")
 	log.Info("Stopping call", "Channel", h.ID())
 	h.Hangup()
+	return err
 }
-func doNothing(ctx context.Context, h *ari.ChannelHandle) {
+func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 
 	log.Info("Doing nothing for Channel", "Channel", h.ID())
+	return nil
 }

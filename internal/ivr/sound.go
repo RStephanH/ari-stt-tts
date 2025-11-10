@@ -8,14 +8,19 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) {
-	ctx, cancel := context.WithCancel(ctx)
-	defer cancel()
+func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) error {
+
+	go func() error {
+		<-ctx.Done()
+		return ctx.Err()
+	}()
+
 	if err := play.Play(ctx, ch, play.URI(soundURI)).Err(); err != nil {
 		log.Errorf("Failed to play %s error= %v", soundURI, err)
-		cancel()
+		return err
 	}
 	log.Infof("Played %s", soundURI)
+	return nil
 }
 
 func welcomeMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {

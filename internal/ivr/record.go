@@ -9,7 +9,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
+func RecordingRequest(ctx context.Context, ch *ari.ChannelHandle) error {
 
 	// The default directory for recordings is /var/spool/asterisk/recording/
 	filename := fmt.Sprintf("msg_%s_%d", ch.ID(), time.Now().Unix())
@@ -23,23 +23,30 @@ func recordingRequest(ctx context.Context, ch *ari.ChannelHandle) {
 		Terminate:   "#"},
 	)
 
-	go func() {
+	go func() error {
 		<-ctx.Done()
 		rec.Stop()
+		return ctx.Err()
 
 	}()
 
 	if err != nil {
 		log.Errorf("Failed to start recording: %v", err)
+		return err
 	}
 	log.Info("Started recording", "filename", filename)
 	chanRec := rec.Subscribe("RecordingFinished")
 	<-chanRec.Events()
 	log.Info("Recording finished", "filename", filename)
 	log.Info("The program should stop now!")
+	return nil
 
 }
 
-func firstRecord() {
-
+func firstRecord() map[string]ChannelHandler {
+	return map[string]ChannelHandler{
+		"1":       RecordingRequest,
+		"2":       StopCall,
+		"default": DoNothing,
+	}
 }
