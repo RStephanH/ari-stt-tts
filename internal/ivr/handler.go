@@ -2,6 +2,7 @@ package ivr
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/CyCoreSystems/ari/v5"
@@ -9,6 +10,7 @@ import (
 )
 
 type ChannelHandler func(ctx context.Context, h *ari.ChannelHandle) error
+type AfterRecordHandler func(ctx context.Context, h *ari.ChannelHandle, filename string) error
 
 func Start(ctx context.Context, client ari.Client) {
 	sub := client.Bus().Subscribe(nil, "StasisStart")
@@ -56,7 +58,11 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 	// 	"2":       func() { StopCall(mainCtx, h) },
 	// 	"default": func() { DoNothing(mainCtx, h) },
 	// }
-	DTMFHandl(mainCtx, subCancel, client, h, firstRecord()) //First record
+
+	recFilename := fmt.Sprintf("msg_%s_%d", h.ID(), time.Now().Unix())
+	DTMFHandl(mainCtx, cancel, subCancel, client, h, firstRecord(&recFilename)) //First record
+	go recordingMessage(mainCtx, subCtx, h)
+	DTMFHandl(mainCtx, cancel, subCancel, client, h, secondRecord(&recFilename)) //Second record and listen
 
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
