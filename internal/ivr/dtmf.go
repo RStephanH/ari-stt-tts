@@ -7,12 +7,9 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func DTMFHandl(mainCtx context.Context, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle, actions map[string]ChannelHandler) {
-	// TODO add functionality to handle DTMF events with functions as parameters
-	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived")
+func DTMFHandl(mainCtx context.Context, mainCancel context.CancelFunc, subCancel context.CancelFunc, client ari.Client, ch *ari.ChannelHandle, actions map[string]ChannelHandler) {
+	sub := client.Bus().Subscribe(nil, "ChannelDtmfReceived", "RecordingFinished")
 	defer sub.Cancel()
-
-	mainCtx, cancel := context.WithCancel(mainCtx)
 
 	for {
 		select {
@@ -28,7 +25,17 @@ func DTMFHandl(mainCtx context.Context, subCancel context.CancelFunc, client ari
 							log.Info("Stop any Playback message and should record now")
 
 						}()
-						action(mainCtx, ch)
+
+						if err := action(mainCtx, ch); err != nil {
+							log.Error("Error executing action for DTMF digit", "Digit", ev.Digit, "Error", err)
+						}
+						for evts := range sub.Events() {
+							if evt, ok := evts.(*ari.RecordingFinished); ok {
+								log.Infof("Recording finished: %s", evt.Recording.Name)
+								log.Info("Should switch on another function")
+								return
+							}
+						}
 					} else if ev.Digit == "#" {
 						actions["default"](mainCtx, ch)
 
@@ -40,7 +47,7 @@ func DTMFHandl(mainCtx context.Context, subCancel context.CancelFunc, client ari
 			}
 
 		case <-mainCtx.Done():
-			cancel()
+			return
 
 		}
 	}
