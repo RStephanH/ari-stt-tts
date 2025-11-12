@@ -22,19 +22,25 @@ func DTMFHandl(mainCtx context.Context, mainCancel context.CancelFunc, subCancel
 					if action, ok := actions[ev.Digit]; ok {
 						go func() {
 							subCancel()
-							log.Info("Stop any Playback message and should record now")
+							log.Info("Stop any Playback message and should other action now")
 
 						}()
 
 						if err := action(mainCtx, ch); err != nil {
 							log.Error("Error executing action for DTMF digit", "Digit", ev.Digit, "Error", err)
 						}
-						for evts := range sub.Events() {
-							if evt, ok := evts.(*ari.RecordingFinished); ok {
-								log.Infof("Recording finished: %s", evt.Recording.Name)
-								log.Info("Should switch on another function")
-								return
+						if ev.Digit == "1" {
+							for evts := range sub.Events() {
+								if evt, ok := evts.(*ari.RecordingFinished); ok {
+									log.Infof("Recording finished: %s", evt.Recording.Name)
+									log.Info("Should switch on another function")
+									return
+								}
+
 							}
+						} else {
+							log.Info("Action terminated")
+							return
 						}
 					} else if ev.Digit == "#" {
 						actions["default"](mainCtx, ch)
