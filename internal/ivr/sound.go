@@ -22,6 +22,31 @@ func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) erro
 	log.Infof("Played %s", soundURI)
 	return nil
 }
+func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*play.Result, error) {
+	for {
+		select {
+		case <-ctx.Done():
+			log.Info("PromptSound context cancelled")
+			return nil, ctx.Err()
+		default:
+			res, er := play.Prompt(ctx, ch,
+				play.URI(soundURI),
+				play.MatchDiscrete([]string{"1", "2", "3", "0", "#"}),
+				play.Replays(3)).Result()
+			if er != nil {
+				log.Info("Error detected", "error", er)
+				return nil, er
+
+			}
+			if res.DTMF != "" {
+				log.Info("resultat from the prompt is ", "value", res.DTMF)
+				return res, nil
+
+			}
+
+		}
+	}
+}
 
 func welcomeMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {
 	go func() {
