@@ -50,20 +50,6 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 
 	log.Info("Runnign app", "Channel", h.ID())
 
-	//Welcomming message
-	go welcomeMessage(mainCtx, subCtx, h)
-
-	// actions := map[string]func(){
-	// 	"1":       func() { RecordingRequest(mainCtx, h) },
-	// 	"2":       func() { StopCall(mainCtx, h) },
-	// 	"default": func() { DoNothing(mainCtx, h) },
-	// }
-
-	recFilename := fmt.Sprintf("msg_%s_%d", h.ID(), time.Now().Unix())
-	DTMFHandl(mainCtx, cancel, subCancel, client, h, firstRecord(&recFilename)) //First record
-	go recordingMessage(mainCtx, subCtx, h)
-	DTMFHandl(mainCtx, cancel, subCancel, client, h, secondRecord(&recFilename)) //Second record and listen
-
 	end := h.Subscribe(ari.Events.StasisEnd)
 	defer end.Cancel()
 
@@ -72,6 +58,20 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 		<-end.Events()
 		cancel()
 	}()
+
+	recFilename := fmt.Sprintf("msg_%s_%d", h.ID(), time.Now().Unix())
+	DTMFHandl(mainCtx, "sound:welcome-ari", client, h, firstRecord(&recFilename)) //First record wiht welcome message
+
+	for {
+		select {
+		case <-mainCtx.Done():
+			log.Info("Main context done, exiting DTMF handler loop", "Channel", h.ID())
+			return
+
+		default:
+			DTMFHandl(mainCtx, "sound:rick-astley", client, h, secondRecord(&recFilename)) //Second record with listen option and another message
+		}
+	}
 
 }
 
