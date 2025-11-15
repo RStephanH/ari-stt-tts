@@ -8,7 +8,7 @@ COPY . .
 
 ARG APP_NAME=ivr-server
 
-RUN CGO_ENABLED=0 GOOS=linux go build -o  /${APP_NAME} ./cmd/server 
+RUN CGO_ENABLED=0 GOOS=linux go build -o  /${APP_NAME} ./
 
 FROM alpine:3.22
 
@@ -17,12 +17,12 @@ USER appuser
 
 WORKDIR /home/appuser
 
-COPY --from=builder /ivr-server ./ivr-server
+COPY --from=builder /${APP_NAME} ./${APP_NAME}
 
 EXPOSE 8088
 
-ENV ARI_URL="http://localhost:8088/ari" \
-  ARI_WS_URL="ws://localhost:8088/ari/events" \
+ENV ARI_URL="http://172.17.0.1:8088/ari" \
+  ARI_WS_URL="ws://172.17.0.1:8088/ari/events" \
   ARI_USERNAME="asterisk" \
   ARI_PASSWORD="asterisk" \
   ARI_APPLICATION_NAME="app"
