@@ -25,6 +25,7 @@ ENV ARI_URL="http://172.17.0.1:8088/ari" \
   ARI_WS_URL="ws://172.17.0.1:8088/ari/events" \
   ARI_USERNAME="asterisk" \
   ARI_PASSWORD="asterisk" \
-  ARI_APPLICATION_NAME="app"
+  ARI_APPLICATION_NAME="app" \
+  DEEPGRAM_API_KEY=""
 
 ENTRYPOINT [ "./ivr-server" ]
