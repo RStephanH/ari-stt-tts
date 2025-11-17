@@ -1,12 +1,15 @@
 package ivr
 
 import (
+	"ari/internal/stt"
+	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
+	apiInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
 )
 
 type ChannelHandler func(ctx context.Context, h *ari.ChannelHandle) error
@@ -61,6 +64,7 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 
 	recFilename := fmt.Sprintf("msg_%s_%d", h.ID(), time.Now().Unix())
 	DTMFHandl(mainCtx, "sound:welcome-ari", client, h, firstRecord(&recFilename)) //First record wiht welcome message
+	var resBody apiInterfaces.PreRecordedResponse
 
 	for {
 		select {
@@ -69,7 +73,7 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 			return
 
 		default:
-			DTMFHandl(mainCtx, "sound:rick-astley", client, h, secondRecord(&recFilename)) //Second record with listen option and another message
+			DTMFHandl(mainCtx, "sound:rick-astley", client, h, secondRecord(&recFilename, &resBody)) //Second record with listen option and another message
 		}
 	}
 
@@ -85,4 +89,29 @@ func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 
 	log.Info("Doing nothing for Channel", "Channel", h.ID())
 	return nil
+}
+func ValidateSend(filename *string, resBody *apiInterfaces.PreRecordedResponse) ChannelHandler {
+	return func(ctx context.Context, h *ari.ChannelHandle) error {
+		//Get the recording bite audio
+		audio, err := downloadRecordingFromARI(ctx, filename)
+		if err != nil {
+			return err
+
+		}
+		reader := bytes.NewReader(audio)
+		//Send to Deepgram STT
+		err = stt.DgSendPreRecorded(ctx, reader, resBody)
+		if err != nil {
+			return err
+		}
+		fmt.Printf("Request ID: %s\n", resBody.RequestID)
+		if resBody.Results != nil &&
+			len(resBody.Results.Channels) > 0 &&
+			len(resBody.Results.Channels[0].Alternatives) > 0 {
+			transcript := resBody.Results.Channels[0].Alternatives[0].Transcript
+			fmt.Println("Transcription:", transcript)
+		}
+		return nil
+
+	}
 }
