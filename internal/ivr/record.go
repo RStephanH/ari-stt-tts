@@ -3,17 +3,19 @@ package ivr
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"os"
 	"time"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
+	apiInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
 )
 
 func RecordingRequest(filename *string) ChannelHandler {
 	return func(ctx context.Context, ch *ari.ChannelHandle) error {
 		// The default directory for recordings is /var/spool/asterisk/recording/
-		//
-		// filename := fmt.Sprintf("msg_%s_%d", ch.ID(), time.Now().Unix())
 
 		rec, err := ch.Record(*filename, &ari.RecordingOptions{
 			Format:      "wav",
@@ -54,6 +56,26 @@ func ListentRecording(filename *string) ChannelHandler {
 	}
 }
 
+func downloadRecordingFromARI(ctx context.Context, recordingName *string) ([]byte, error) {
+	url := fmt.Sprintf("%s/recordings/stored/%s/file", os.Getenv("ARI_URL"), *recordingName)
+	log.Info("GET the ressource", "URL", url)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+
+	if err != nil {
+		return nil, err
+	}
+	req.SetBasicAuth(os.Getenv("ARI_USERNAME"), os.Getenv("ARI_PASSWORD"))
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	return io.ReadAll(resp.Body)
+
+}
+
 func firstRecord(filename *string) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
 		"1":       RecordingRequest(filename),
@@ -62,10 +84,11 @@ func firstRecord(filename *string) map[string]ChannelHandler {
 	}
 }
 
-func secondRecord(filename *string) map[string]ChannelHandler {
+func secondRecord(filename *string, resBody *apiInterfaces.PreRecordedResponse) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
 		"1":       RecordingRequest(filename),
 		"2":       ListentRecording(filename),
+		"3":       ValidateSend(filename, resBody),
 		"0":       StopCall,
 		"default": DoNothing,
 	}
