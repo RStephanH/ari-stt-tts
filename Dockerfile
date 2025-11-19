@@ -21,10 +21,10 @@ COPY --from=builder /${APP_NAME} ./${APP_NAME}
 
 EXPOSE 8088
 
-ENV ARI_URL="http://172.17.0.1:8088/ari" \
-  ARI_WS_URL="ws://172.17.0.1:8088/ari/events" \
-  ARI_USERNAME="asterisk" \
-  ARI_PASSWORD="asterisk" \
+ENV ARI_URL="http://192.168.122.113:8088/ari" \
+  ARI_WS_URL="ws://192.168.122.113:8088/ari/events" \
+  ARI_USERNAME="ari_user" \
+  ARI_PASSWORD="password" \
   ARI_APPLICATION_NAME="app" \
   DEEPGRAM_API_KEY=""
 
