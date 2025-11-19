@@ -1,11 +1,13 @@
 package ivr
 
 import (
-	"ari/internal/stt"
 	"bytes"
 	"context"
 	"fmt"
 	"time"
+
+	"ari/internal/ai"
+	"ari/internal/stt"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
@@ -85,11 +87,12 @@ func StopCall(ctx context.Context, h *ari.ChannelHandle) error {
 	h.Hangup()
 	return err
 }
-func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 
+func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 	log.Info("Doing nothing for Channel", "Channel", h.ID())
 	return nil
 }
+
 func ValidateSend(filename *string, resBody *apiInterfaces.PreRecordedResponse) ChannelHandler {
 	return func(ctx context.Context, h *ari.ChannelHandle) error {
 		//Get the recording bite audio
@@ -104,13 +107,36 @@ func ValidateSend(filename *string, resBody *apiInterfaces.PreRecordedResponse) 
 		if err != nil {
 			return err
 		}
+
+		//Get the transcription result
 		fmt.Printf("Request ID: %s\n", resBody.RequestID)
 		if resBody.Results != nil &&
 			len(resBody.Results.Channels) > 0 &&
 			len(resBody.Results.Channels[0].Alternatives) > 0 {
 			transcript := resBody.Results.Channels[0].Alternatives[0].Transcript
 			fmt.Println("Transcription:", transcript)
+
+			//Gemini Part
+			gemClient, err := ai.GeminiClient(ctx) //Create Gemini client
+			if err != nil {
+				return err
+			}
+			log.Info("Gemini client created")
+			gemChat, err := ai.GeminiChatClient(ctx, gemClient) //Create Gemini chat session
+			if err != nil {
+				return err
+			}
+			log.Info("Gemini chat session created")
+
+			// Send the request to Gemini
+			reqResult, err := ai.SendGeminiMessage(ctx, gemChat, transcript) //Send the transcript to Gemini
+			if err != nil {
+				log.Error("Error sending message to Gemini", "error", err)
+				return err
+			}
+			log.Info("Gemini response received", "response", reqResult)
 		}
+
 		return nil
 
 	}
