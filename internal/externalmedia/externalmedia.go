@@ -1,6 +1,7 @@
 package externalmedia
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -32,7 +33,7 @@ type ExternalMediaResponse struct {
 }
 
 // CreateExternalMedia creates the externalmedia channel on asterisk server
-func CreateExternalMedia(p ExternalMediaParams) (string, error) {
+func CreateExternalMedia(p ExternalMediaParams) (*ExternalMediaResponse, error) {
 
 	endpoint := fmt.Sprintf("%s/ari/channels/externalMedia", p.ARIBaseURL)
 	log.Info("Creating External Media Channel", "endpoint", endpoint)
@@ -46,7 +47,7 @@ func CreateExternalMedia(p ExternalMediaParams) (string, error) {
 	log.Info("External Media Request URL", "url", reqURL)
 	req, err := http.NewRequest("POST", reqURL, nil)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	req.SetBasicAuth(p.Username, p.Password)
@@ -54,15 +55,19 @@ func CreateExternalMedia(p ExternalMediaParams) (string, error) {
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	defer resp.Body.Close()
 	bodyBytes, _ := io.ReadAll(resp.Body)
 
 	if resp.StatusCode >= 300 {
-		return "", fmt.Errorf("asterisk returned status %d: %s", resp.StatusCode, string(bodyBytes))
+		return nil, fmt.Errorf("asterisk returned status %d: %s", resp.StatusCode, string(bodyBytes))
 	}
 
-	// The JSON contains a field "id" -> channel ID of the external media
-	return string(bodyBytes), nil
+	//Parse JSON response
+	var parsed ExternalMediaResponse
+	if err := json.Unmarshal(bodyBytes, &parsed); err != nil {
+		return nil, err
+	}
+	return &parsed, nil
 }
