@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	// "os"
+	"os"
 	"time"
 
 	"ari/internal/ai"
@@ -144,23 +144,13 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 			log.Info("Gemini response received", "response", reqResult)
 			// ---External Media Part---
 
-			// params := externalmedia.ExternalMediaParams{
-			// 	ARIBaseURL: os.Getenv("ARI_URL"),
-			// 	Username:   os.Getenv("ARI_USERNAME"),
-			// 	Password:   os.Getenv("ARI_PASSWORD"),
-			//
-			// 	AppName: os.Getenv("ARI_APPLICATION_NAME"),
-			// 	HostIP:  os.Getenv("ARI_IP"),
-			// 	Port:    4002,
-			// 	Format:  "slin16",
-			// }
 			params := externalmedia.ExternalMediaParams{
-				ARIBaseURL: "http://192.168.122.113:8088",
-				Username:   "ari_user",
-				Password:   "password",
+				ARIBaseURL: os.Getenv("ARI_EXTERNAL_MEDIA_BASE_URL"),
+				Username:   os.Getenv("ARI_USERNAME"),
+				Password:   os.Getenv("ARI_PASSWORD"),
 
-				AppName: "app",
-				HostIP:  "192.168.122.113",
+				AppName: os.Getenv("ARI_APPLICATION_NAME"),
+				HostIP:  os.Getenv("ARI_IP"),
 				Port:    4002,
 				Format:  "slin16",
 			}
@@ -168,7 +158,16 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 			if err != nil {
 				log.Fatal("External Media creation failed", "error", err)
 			}
-			fmt.Println("External Media Channel Created:", result)
+			// fmt.Println("External Media Channel Created:", result)
+			log.Info("Channel RTP Info", "Channel ID", result.ID)
+			log.Info("Channel RTP Info", "Asterisk RTP Address", result.ChannelVars.RTPAddress)
+			log.Info("Channel RTP Info", "Asterisk RTP Port:", result.ChannelVars.RTPPort)
+
+			rtpAddr := fmt.Sprintf("%s:%s",
+				result.ChannelVars.RTPAddress,
+				result.ChannelVars.RTPPort,
+			)
+			log.Info("Connecting channel to External Media at", "RTP Address", rtpAddr)
 
 			// ---------------------TTS Part (Disabled)---------------------
 			// var ttsKeys []string
