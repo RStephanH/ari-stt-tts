@@ -10,7 +10,8 @@ import (
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
-	apiInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
+	apiPrerecordedInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
+	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
 )
 
 func RecordingRequest(filename *string) ChannelHandler {
@@ -84,11 +85,11 @@ func firstRecord(filename *string) map[string]ChannelHandler {
 	}
 }
 
-func secondRecord(filename *string, resBody *apiInterfaces.PreRecordedResponse) map[string]ChannelHandler {
+func secondRecord(filename *string, recResBody *apiPrerecordedInterfaces.PreRecordedResponse, speakResBody *apiSpeakResponseInterfaces.SpeakResponse) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
 		"1":       RecordingRequest(filename),
 		"2":       ListentRecording(filename),
-		"3":       ValidateSend(filename, resBody),
+		"3":       ValidateSend(filename, recResBody, speakResBody),
 		"0":       StopCall,
 		"default": DoNothing,
 	}
