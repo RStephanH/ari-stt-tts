@@ -10,13 +10,14 @@ import (
 	"ari/internal/ai"
 	"ari/internal/stt"
 
-	// "ari/internal/tts"
 	"ari/internal/externalmedia"
+	"ari/internal/tts"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
 	apiPrerecordedInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
 	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
+	"github.com/deepgram/deepgram-go-sdk/pkg/client/interfaces"
 )
 
 type ChannelHandler func(ctx context.Context, h *ari.ChannelHandle) error
@@ -142,6 +143,25 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 				return err
 			}
 			log.Info("Gemini response received", "response", reqResult)
+
+			// ---------------------TTS Part---------------------
+			var raw interfaces.RawResponse
+			speakResponse, eror := tts.GetDgTTS(ctx, reqResult, &raw)
+
+			if eror != nil {
+				log.Error("Error in TTS:", "error", eror)
+				return eror
+			}
+			// ---Result verification---
+			log.Info("TTS format",
+				"TransferEncoding", speakResponse.TransferEncoding,
+				"ModelName", speakResponse.ModelName,
+				"ContextType", speakResponse.ContextType,
+				"Characters", speakResponse.Characters,
+			)
+			log.Info("Audio received", "bytes", raw.Len())
+			log.Info("Calculate", "len(raw.data) % 640", raw.Len()%640)
+
 			// ---External Media Part---
 
 			params := externalmedia.ExternalMediaParams{
@@ -158,7 +178,6 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 			if err != nil {
 				log.Fatal("External Media creation failed", "error", err)
 			}
-			// fmt.Println("External Media Channel Created:", result)
 			log.Info("Channel RTP Info", "Channel ID", result.ID)
 			log.Info("Channel RTP Info", "Asterisk RTP Address", result.ChannelVars.RTPAddress)
 			log.Info("Channel RTP Info", "Asterisk RTP Port:", result.ChannelVars.RTPPort)
@@ -168,17 +187,6 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 				result.ChannelVars.RTPPort,
 			)
 			log.Info("Connecting channel to External Media at", "RTP Address", rtpAddr)
-
-			// ---------------------TTS Part (Disabled)---------------------
-			// var ttsKeys []string
-			// eror := tts.GetDgTTS(ctx, reqResult, ttsKeys, speakResBody)
-			//
-			// if eror != nil {
-			// 	log.Error("Error in TTS:", "error", eror)
-			// 	return eror
-			// }
-			// speakResBody.RequestID
-			// // something wrong here
 		}
 
 		return nil
