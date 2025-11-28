@@ -170,23 +170,55 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 				Password:   os.Getenv("ARI_PASSWORD"),
 
 				AppName: os.Getenv("ARI_APPLICATION_NAME"),
-				HostIP:  os.Getenv("ARI_IP"),
+				HostIP:  os.Getenv("EXTERNAL_HOST_IP"),
 				Port:    4002,
 				Format:  "slin16",
 			}
-			result, err := externalmedia.CreateExternalMedia(params)
-			if err != nil {
-				log.Fatal("External Media creation failed", "error", err)
-			}
-			log.Info("Channel RTP Info", "Channel ID", result.ID)
-			log.Info("Channel RTP Info", "Asterisk RTP Address", result.ChannelVars.RTPAddress)
-			log.Info("Channel RTP Info", "Asterisk RTP Port:", result.ChannelVars.RTPPort)
+			// 	result, err := externalmedia.CreateExternalMedia(params)
+			// 	if err != nil {
+			// 		log.Fatal("External Media creation failed", "error", err)
+			// 	}
+			// 	log.Info("Channel RTP Info", "Channel ID", result.ID)
+			// 	log.Info("Channel RTP Info", "Asterisk RTP Address", result.ChannelVars.RTPAddress)
+			// 	log.Info("Channel RTP Info", "Asterisk RTP Port:", result.ChannelVars.RTPPort)
+			//
+			// 	rtpAddr := fmt.Sprintf("%s:%s",
+			// 		result.ChannelVars.RTPAddress,
+			// 		result.ChannelVars.RTPPort,
+			// 	)
+			// 	log.Info("Connecting channel to External Media at", "RTP Address", rtpAddr)
+			//
+			// 	// ---Send audio as RTP---
+			// 	log.Info("Sending TTS audio as RTP to", "RTP Address", rtpAddr)
+			// 	//convert raw data to byte slice
+			// 	pcm := raw.Bytes()
+			// 	log.Info("PCM audio length in bytes:", "length", len(pcm))
+			// 	externalmediaErr := externalmedia.SendRawPCMAsRTP(ctx, pcm, rtpAddr, 16000)
+			// 	if externalmediaErr != nil {
+			// 		log.Errorf("SendRawPCMAsRTP failed: %v", externalmediaErr)
+			// 	}
+			// 	log.Info("Finished sending TTS audio as RTP to", "RTP Address", rtpAddr)
 
-			rtpAddr := fmt.Sprintf("%s:%s",
-				result.ChannelVars.RTPAddress,
-				result.ChannelVars.RTPPort,
-			)
-			log.Info("Connecting channel to External Media at", "RTP Address", rtpAddr)
+			extMediaCh, err := externalmedia.CreateExternalMediaChannel(params)
+			if err != nil {
+				log.Fatal("External Media Channel creation failed", "error", err)
+				return err
+			}
+			defer extMediaCh.Close()
+
+			// Wait for Asterisk to connect
+			if err := extMediaCh.WaitForAsteriskRTP(10 * time.Second); err != nil {
+				log.Fatal("Asterisk did not connect:", err)
+				return err
+			}
+
+			pcm := raw.Bytes()
+			result := extMediaCh.SendPCM(ctx, pcm)
+			if result != nil {
+				log.Error("Error sending PCM to External Media Channel:", "error", result)
+				return result
+			}
+
 		}
 
 		return nil
