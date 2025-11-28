@@ -39,6 +39,8 @@ require (
 	github.com/mattn/go-runewidth v0.0.16 // indirect
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
+	github.com/pion/randutil v0.1.0 // indirect
+	github.com/pion/rtp v1.8.25 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rotisserie/eris v0.4.1 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
