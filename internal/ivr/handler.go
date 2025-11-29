@@ -27,8 +27,8 @@ func Start(ctx context.Context, client ari.Client) {
 	sub := client.Bus().Subscribe(nil, "StasisStart")
 	defer sub.Cancel()
 
-	subCtx, subCancel := context.WithCancel(context.Background())
-	defer subCancel()
+	// subCtx, subCancel := context.WithCancel(context.Background())
+	// defer subCancel()
 
 	for {
 		select {
@@ -43,15 +43,46 @@ func Start(ctx context.Context, client ari.Client) {
 			}
 
 			if chanHandl, ok := evt.(*ari.StasisStart); ok {
-				log.Infof("c Type = %T", chanHandl)
-				go callHandl(ctx, subCtx, subCancel, client.Channel().Get(chanHandl.Key(ari.ChannelKey, chanHandl.Channel.ID)), client)
+				log.Infof("Events StasisStart Type = %T", chanHandl)
+				//Create a bridge mixed with StasisStart events
+				// mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, "mix_tts_bridge"),
+				// 	"mixing",
+				// 	"mix bridge for call channel and externalmedia channel")
+				bridgeID := fmt.Sprintf("mix_%s", chanHandl.Channel.ID)
+				mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, bridgeID),
+					"mixing",
+					"mix bridge for call channel and externalmedia channel")
+				if err != nil {
+					log.Fatal("Failed to create bridge:", "error", err)
+				}
+				defer mixBridgeHandl.Delete()
+
+				////Add the channel to the bridge
+				//addChanRes := mixBridgeHandl.AddChannel(chanHandl.Channel.ID)
+				//if addChanRes != nil {
+				//	log.Fatal("Failed to add channel to bridge:", "error", addChanRes)
+				//}
+				//defer mixBridgeHandl.RemoveChannel(chanHandl.Channel.ID)
+
+				//Call the handler in a separate goroutine
+				go callHandl(ctx,
+					client.Channel().Get(chanHandl.Key(ari.ChannelKey, chanHandl.Channel.ID)),
+					client,
+					chanHandl,
+					mixBridgeHandl,
+				)
 
 			}
 		}
 	}
 }
 
-func callHandl(mainCtx context.Context, subCtx context.Context, subCancel context.CancelFunc, h *ari.ChannelHandle, client ari.Client) {
+func callHandl(mainCtx context.Context,
+	h *ari.ChannelHandle,
+	client ari.Client,
+	callChan *ari.StasisStart,
+	bridgeHandl *ari.BridgeHandle,
+) {
 	h.Answer()
 	time.Sleep(2 * time.Second)
 	defer h.Hangup()
@@ -71,7 +102,12 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 	}()
 
 	recFilename := fmt.Sprintf("msg_%s_%d", h.ID(), time.Now().Unix())
-	DTMFHandl(mainCtx, "sound:welcome-ari", client, h, firstRecord(&recFilename)) //First record wiht welcome message
+
+	DTMFHandl(mainCtx,
+		"sound:welcome-ari",
+		client,
+		h,
+		firstRecord(&recFilename)) //First record wiht welcome message
 	var recResBody apiPrerecordedInterfaces.PreRecordedResponse
 	var speakResBody apiSpeakResponseInterfaces.SpeakResponse
 
@@ -82,7 +118,11 @@ func callHandl(mainCtx context.Context, subCtx context.Context, subCancel contex
 			return
 
 		default:
-			DTMFHandl(mainCtx, "sound:rick-astley", client, h, secondRecord(&recFilename, &recResBody, &speakResBody)) //Second record with listen option and another message
+			DTMFHandl(mainCtx,
+				"sound:rick-astley",
+				client,
+				h,
+				secondRecord(&recFilename, &recResBody, &speakResBody, bridgeHandl, callChan)) //Second record with listen option and another message
 		}
 	}
 
@@ -100,7 +140,12 @@ func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 	return nil
 }
 
-func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreRecordedResponse, speakResBody *apiSpeakResponseInterfaces.SpeakResponse) ChannelHandler {
+func ValidateSend(filename *string,
+	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
+	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
+	ch *ari.StasisStart,
+	bridgCh *ari.BridgeHandle,
+) ChannelHandler {
 	return func(ctx context.Context, h *ari.ChannelHandle) error {
 		//Get the recording bite audio
 		audio, err := downloadRecordingFromARI(ctx, filename)
@@ -174,36 +219,23 @@ func ValidateSend(filename *string, recResBody *apiPrerecordedInterfaces.PreReco
 				Port:    4002,
 				Format:  "slin16",
 			}
-			// 	result, err := externalmedia.CreateExternalMedia(params)
-			// 	if err != nil {
-			// 		log.Fatal("External Media creation failed", "error", err)
-			// 	}
-			// 	log.Info("Channel RTP Info", "Channel ID", result.ID)
-			// 	log.Info("Channel RTP Info", "Asterisk RTP Address", result.ChannelVars.RTPAddress)
-			// 	log.Info("Channel RTP Info", "Asterisk RTP Port:", result.ChannelVars.RTPPort)
-			//
-			// 	rtpAddr := fmt.Sprintf("%s:%s",
-			// 		result.ChannelVars.RTPAddress,
-			// 		result.ChannelVars.RTPPort,
-			// 	)
-			// 	log.Info("Connecting channel to External Media at", "RTP Address", rtpAddr)
-			//
-			// 	// ---Send audio as RTP---
-			// 	log.Info("Sending TTS audio as RTP to", "RTP Address", rtpAddr)
-			// 	//convert raw data to byte slice
-			// 	pcm := raw.Bytes()
-			// 	log.Info("PCM audio length in bytes:", "length", len(pcm))
-			// 	externalmediaErr := externalmedia.SendRawPCMAsRTP(ctx, pcm, rtpAddr, 16000)
-			// 	if externalmediaErr != nil {
-			// 		log.Errorf("SendRawPCMAsRTP failed: %v", externalmediaErr)
-			// 	}
-			// 	log.Info("Finished sending TTS audio as RTP to", "RTP Address", rtpAddr)
 
 			extMediaCh, err := externalmedia.CreateExternalMediaChannel(params)
 			if err != nil {
 				log.Fatal("External Media Channel creation failed", "error", err)
 				return err
 			}
+
+			//Add the channel to the bridge
+			addChanRes := bridgCh.AddChannel(ch.Channel.ID)
+			if addChanRes != nil {
+				log.Fatal("Failed to add channel to bridge:", "error", addChanRes)
+			}
+			defer bridgCh.RemoveChannel(ch.Channel.ID)
+
+			//Add the External Media Channel to the bridge
+			bridgCh.AddChannel(extMediaCh.ID)
+			defer bridgCh.RemoveChannel(extMediaCh.ID)
 			defer extMediaCh.Close()
 
 			// Wait for Asterisk to connect
