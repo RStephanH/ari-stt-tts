@@ -14,7 +14,7 @@ import (
 
 func main() {
 	// Create ARI client
-	cl, err := ariutil.NewClient()
+	cl, err := ariutil.NewARIClient()
 
 	if err != nil {
 		log.Fatal("connect failed", "err", err)

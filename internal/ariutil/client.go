@@ -7,7 +7,7 @@ import (
 	"github.com/CyCoreSystems/ari/v5/client/native"
 )
 
-func NewClient() (ari.Client, error) {
+func NewARIClient() (ari.Client, error) {
 
 	// TODO: Move credentials to config or environment variables
 	clientOptions := native.Options{
