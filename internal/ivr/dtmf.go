@@ -19,47 +19,47 @@ func DTMFHandl(mainCtx context.Context,
 	// }()
 
 	for {
-		// select {
+		select {
 
-		go func() {
-			<-mainCtx.Done()
+		case <-mainCtx.Done():
 			return
-		}()
+		default:
 
-		if res, er := promptSound(mainCtx, ch, sound); er == nil {
+			if res, er := promptSound(mainCtx, ch, sound); er == nil {
 
-			if action, ok := actions[res.DTMF]; ok {
-				if err := action(mainCtx, ch); err != nil {
-					log.Error("Error executing action for DTMF digit", "Digit", res.DTMF, "Error", err)
-				}
-				if res.DTMF == "1" {
-					for evts := range sub.Events() {
-						if evt, ok := evts.(*ari.RecordingFinished); ok {
-							log.Infof("Recording finished: %s", evt.Recording.Name)
-							log.Info("Should switch on another function")
-							return
-						}
-
+				if action, ok := actions[res.DTMF]; ok {
+					if err := action(mainCtx, ch); err != nil {
+						log.Error("Error executing action for DTMF digit", "Digit", res.DTMF, "Error", err)
 					}
+					if res.DTMF == "1" {
+						for evts := range sub.Events() {
+							if evt, ok := evts.(*ari.RecordingFinished); ok {
+								log.Infof("Recording finished: %s", evt.Recording.Name)
+								log.Info("Should switch on another function")
+								return
+							}
+
+						}
+					} else {
+						log.Info("Action terminated")
+						return
+					}
+				} else if res.DTMF == "#" {
+					actions["default"](mainCtx, ch)
+
+				} else if res.DTMF == "" {
+					time.Sleep(100 * time.Millisecond)
+					continue
+
 				} else {
-					log.Info("Action terminated")
-					return
+					log.Warn("No action defined for this DTMF digit", "Digit", res.DTMF)
 				}
-			} else if res.DTMF == "#" {
-				actions["default"](mainCtx, ch)
 
-			} else if res.DTMF == "" {
-				time.Sleep(100 * time.Millisecond)
-				continue
-
+				// }
 			} else {
-				log.Warn("No action defined for this DTMF digit", "Digit", res.DTMF)
+				log.Error("Error during prompt sound", "Error", er)
+				return
 			}
-
-			// }
-		} else {
-			log.Error("Error during prompt sound", "Error", er)
-			return
 		}
 
 	}
