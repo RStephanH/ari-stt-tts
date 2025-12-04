@@ -4,20 +4,20 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"os"
+	// "os"
 	"time"
 
 	"ari/internal/ai"
 	"ari/internal/stt"
 
-	"ari/internal/externalmedia"
+	// "ari/internal/externalmedia"
 	"ari/internal/tts"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
 	apiPrerecordedInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
 	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
-	"github.com/deepgram/deepgram-go-sdk/pkg/client/interfaces"
+	// "github.com/deepgram/deepgram-go-sdk/pkg/client/interfaces"
 )
 
 type ChannelHandler func(ctx context.Context, h *ari.ChannelHandle) error
@@ -190,66 +190,71 @@ func ValidateSend(filename *string,
 			log.Info("Gemini response received", "response", reqResult)
 
 			// ---------------------TTS Part---------------------
-			var raw interfaces.RawResponse
-			speakResponse, eror := tts.GetDgTTS(ctx, reqResult, &raw)
+			// var raw interfaces.RawResponse
+			// speakResponse, eror := tts.DgRawTTS(ctx, reqResult, &raw)
+			audioFormat := "wav"
+			pth := "/mnt/tts"
+			filePath := fmt.Sprintf("%s/%s_tts.%s", pth, *filename, audioFormat)
+			_, eror := tts.GetDgFileTTS(ctx, reqResult, filePath)
 
 			if eror != nil {
 				log.Error("Error in TTS:", "error", eror)
 				return eror
 			}
-			// ---Result verification---
-			log.Info("TTS format",
-				"TransferEncoding", speakResponse.TransferEncoding,
-				"ModelName", speakResponse.ModelName,
-				"ContextType", speakResponse.ContextType,
-				"Characters", speakResponse.Characters,
-			)
-			log.Info("Audio received", "bytes", raw.Len())
-			log.Info("Calculate", "len(raw.data) % 640", raw.Len()%640)
-
-			// ---External Media Part---
-
-			params := externalmedia.ExternalMediaParams{
-				ARIBaseURL: os.Getenv("ARI_EXTERNAL_MEDIA_BASE_URL"),
-				Username:   os.Getenv("ARI_USERNAME"),
-				Password:   os.Getenv("ARI_PASSWORD"),
-
-				AppName: os.Getenv("ARI_APPLICATION_NAME"),
-				HostIP:  os.Getenv("EXTERNAL_HOST_IP"),
-				Port:    4002,
-				Format:  "slin16",
-			}
-
-			extMediaCh, err := externalmedia.CreateExternalMediaChannel(params)
-			if err != nil {
-				log.Fatal("External Media Channel creation failed", "error", err)
-				return err
-			}
-
-			//Add the channel to the bridge
-			addChanRes := bridgCh.AddChannel(ch.Channel.ID)
-			if addChanRes != nil {
-				log.Fatal("Failed to add channel to bridge:", "error", addChanRes)
-			}
-			defer bridgCh.RemoveChannel(ch.Channel.ID)
-
-			//Add the External Media Channel to the bridge
-			bridgCh.AddChannel(extMediaCh.ID)
-			defer bridgCh.RemoveChannel(extMediaCh.ID)
-			defer extMediaCh.Close()
-
-			// Wait for Asterisk to connect
-			if err := extMediaCh.WaitForAsteriskRTP(10 * time.Second); err != nil {
-				log.Fatal("Asterisk did not connect:", err)
-				return err
-			}
-
-			pcm := raw.Bytes()
-			result := extMediaCh.SendPCM(ctx, pcm)
-			if result != nil {
-				log.Error("Error sending PCM to External Media Channel:", "error", result)
-				return result
-			}
+			log.Info("File created successfully", "file=", filePath)
+			// // ---Result verification---
+			// log.Info("TTS format",
+			// 	"TransferEncoding", speakResponse.TransferEncoding,
+			// 	"ModelName", speakResponse.ModelName,
+			// 	"ContextType", speakResponse.ContextType,
+			// 	"Characters", speakResponse.Characters,
+			// )
+			// log.Info("Audio received", "bytes", raw.Len())
+			// log.Info("Calculate", "len(raw.data) % 640", raw.Len()%640)
+			//
+			// // ---External Media Part---
+			//
+			// params := externalmedia.ExternalMediaParams{
+			// 	ARIBaseURL: os.Getenv("ARI_EXTERNAL_MEDIA_BASE_URL"),
+			// 	Username:   os.Getenv("ARI_USERNAME"),
+			// 	Password:   os.Getenv("ARI_PASSWORD"),
+			//
+			// 	AppName: os.Getenv("ARI_APPLICATION_NAME"),
+			// 	HostIP:  os.Getenv("EXTERNAL_HOST_IP"),
+			// 	Port:    4002,
+			// 	Format:  "slin16",
+			// }
+			//
+			// extMediaCh, err := externalmedia.CreateExternalMediaChannel(params)
+			// if err != nil {
+			// 	log.Fatal("External Media Channel creation failed", "error", err)
+			// 	return err
+			// }
+			//
+			// //Add the channel to the bridge
+			// addChanRes := bridgCh.AddChannel(ch.Channel.ID)
+			// if addChanRes != nil {
+			// 	log.Fatal("Failed to add channel to bridge:", "error", addChanRes)
+			// }
+			// defer bridgCh.RemoveChannel(ch.Channel.ID)
+			//
+			// //Add the External Media Channel to the bridge
+			// bridgCh.AddChannel(extMediaCh.ID)
+			// defer bridgCh.RemoveChannel(extMediaCh.ID)
+			// defer extMediaCh.Close()
+			//
+			// // Wait for Asterisk to connect
+			// if err := extMediaCh.WaitForAsteriskRTP(10 * time.Second); err != nil {
+			// 	log.Fatal("Asterisk did not connect:", err)
+			// 	return err
+			// }
+			//
+			// pcm := raw.Bytes()
+			// result := extMediaCh.SendPCM(ctx, pcm)
+			// if result != nil {
+			// 	log.Error("Error sending PCM to External Media Channel:", "error", result)
+			// 	return result
+			// }
 
 		}
 
