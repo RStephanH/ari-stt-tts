@@ -3,7 +3,7 @@ services:
     image: ivr-server:mvp
     ports:
       - 4002:4002
-      volume_driver: 
+    volume_driver: 
       - /var/spool/asterisk/recording:/mnt/tts
     env_file:
         - .env
