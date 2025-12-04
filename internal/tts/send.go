@@ -46,5 +46,6 @@ func GetDgFileTTS(ctx context.Context, text string, filePath string) (*apiSpeakR
 		log.Error("Error getting TTS from Deepgram:", "error", err)
 		return nil, err
 	}
+	log.Info("File created successfully")
 	return res, nil
 }
