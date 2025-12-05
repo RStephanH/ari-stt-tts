@@ -15,9 +15,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o  /${APP_NAME} ./
 
 FROM alpine:3.22
 
-#RUN adduser -D appuser
-RUN groupadd -g ${ASTERISK_GID} asterisk && \
-  useradd -u ${ASTERISK_UID} -g ${ASTERISK_GID} -m -s /bin/bash appuser
+ARG APP_NAME=ivr-server
+
+ARG ASTERISK_ID=113
+ARG ASTERISK_GUID=112
+
+RUN addgroup -g ${ASTERISK_GUID} asterisk  && \
+  adduser -u ${ASTERISK_ID} -G asterisk -D appuser
+
+RUN mkdir -p /mnt/tts && \
+  chown appuser:asterisk /mnt/tts
 
 USER appuser
 
