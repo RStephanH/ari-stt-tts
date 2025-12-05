@@ -8,11 +8,17 @@ COPY . .
 
 ARG APP_NAME=ivr-server
 
+ARG ASTERISK_ID=113
+ARG ASTERISK_GUID=112
+
 RUN CGO_ENABLED=0 GOOS=linux go build -o  /${APP_NAME} ./
 
 FROM alpine:3.22
 
-RUN adduser -D appuser
+#RUN adduser -D appuser
+RUN groupadd -g ${ASTERISK_GID} asterisk && \
+  useradd -u ${ASTERISK_UID} -g ${ASTERISK_GID} -m -s /bin/bash appuser
+
 USER appuser
 
 WORKDIR /home/appuser
