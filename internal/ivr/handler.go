@@ -190,8 +190,8 @@ func ValidateSend(filename *string,
 			log.Info("Gemini response received", "response", reqResult)
 
 			// ---------------------TTS Part---------------------
-			// var raw interfaces.RawResponse
-			// speakResponse, eror := tts.DgRawTTS(ctx, reqResult, &raw)
+
+			// --- Generate sound file of result ---- //
 			audioFormat := "wav"
 			pth := "/mnt/tts"
 			filePath := fmt.Sprintf("%s/%s_tts.%s", pth, *filename, audioFormat)
@@ -202,6 +202,13 @@ func ValidateSend(filename *string,
 				return eror
 			}
 			log.Info("File created successfully", "file=", filePath)
+
+			// --- play sound of the result ---//
+
+			errResSoundPlay := playSound(ctx, h, filePath)
+			if errResSoundPlay != nil {
+				log.Error("Error playing the result of the request", "filePath", filePath)
+			}
 			// // ---Result verification---
 			// log.Info("TTS format",
 			// 	"TransferEncoding", speakResponse.TransferEncoding,
