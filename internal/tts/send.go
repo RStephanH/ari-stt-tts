@@ -18,8 +18,8 @@ func GetDgRawTTS(ctx context.Context, text string, raw *interfaces.RawResponse) 
 	speakOptions := &interfaces.SpeakOptions{
 		Model:      "aura-2-thalia-en",
 		Encoding:   "linear16",
-		Container:  "none",
-		SampleRate: 16000,
+		Container:  "wav",
+		SampleRate: 8000,
 	}
 	cl := client.NewWithDefaults()
 	apiCl := apiClient.New(cl)
