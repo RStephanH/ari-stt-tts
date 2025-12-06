@@ -88,14 +88,12 @@ func firstRecord(filename *string) map[string]ChannelHandler {
 func secondRecord(filename *string,
 	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
 	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
-	bridgeHandl *ari.BridgeHandle,
-	ch *ari.StasisStart,
 	h *ari.ChannelHandle) map[string]ChannelHandler {
 
 	return map[string]ChannelHandler{
 		"1":       RecordingRequest(filename),
 		"2":       ListentRecording(filename),
-		"3":       ValidateSend(filename, recResBody, speakResBody, ch, bridgeHandl, h),
+		"3":       ValidateSend(filename, recResBody, speakResBody, h),
 		"0":       StopCall,
 		"default": DoNothing,
 	}

@@ -45,14 +45,14 @@ func Start(ctx context.Context, client ari.Client) {
 				// mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, "mix_tts_bridge"),
 				// 	"mixing",
 				// 	"mix bridge for call channel and externalmedia channel")
-				bridgeID := fmt.Sprintf("mix_%s", chanHandl.Channel.ID)
-				mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, bridgeID),
-					"mixing",
-					"mix bridge for call channel and externalmedia channel")
-				if err != nil {
-					log.Fatal("Failed to create bridge:", "error", err)
-				}
-				defer mixBridgeHandl.Delete()
+				// bridgeID := fmt.Sprintf("mix_%s", chanHandl.Channel.ID)
+				// mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, bridgeID),
+				// 	"mixing",
+				// 	"mix bridge for call channel and externalmedia channel")
+				// if err != nil {
+				// 	log.Fatal("Failed to create bridge:", "error", err)
+				// }
+				// defer mixBridgeHandl.Delete()
 
 				////Add the channel to the bridge
 				//addChanRes := mixBridgeHandl.AddChannel(chanHandl.Channel.ID)
@@ -66,7 +66,6 @@ func Start(ctx context.Context, client ari.Client) {
 					client.Channel().Get(chanHandl.Key(ari.ChannelKey, chanHandl.Channel.ID)),
 					client,
 					chanHandl,
-					mixBridgeHandl,
 				)
 
 			}
@@ -78,7 +77,6 @@ func callHandl(mainCtx context.Context,
 	h *ari.ChannelHandle,
 	client ari.Client,
 	callChan *ari.StasisStart,
-	bridgeHandl *ari.BridgeHandle,
 ) {
 	h.Answer()
 	time.Sleep(2 * time.Second)
@@ -119,7 +117,7 @@ func callHandl(mainCtx context.Context,
 				"sound:rick-astley",
 				client,
 				h,
-				secondRecord(&recFilename, &recResBody, &speakResBody, bridgeHandl, callChan, h)) //Second record with listen option and another message
+				secondRecord(&recFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
 		}
 	}
 
@@ -140,9 +138,7 @@ func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 func ValidateSend(filename *string,
 	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
 	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
-	ch *ari.StasisStart,
-	bridgCh *ari.BridgeHandle,
-	h *ari.ChannelHandle,
+	ch *ari.ChannelHandle,
 ) ChannelHandler {
 	return func(ctx context.Context, h *ari.ChannelHandle) error {
 		//Get the recording bite audio
@@ -207,7 +203,7 @@ func ValidateSend(filename *string,
 			resUri := fmt.Sprintf("recording:%s", respFileName)
 			log.Info("Print resUri", "resUri", resUri)
 			plID := fmt.Sprintf("%s_ID", resUri)
-			_, errResSoundPlay := h.Play(plID, resUri)
+			_, errResSoundPlay := ch.Play(plID, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
 			}
