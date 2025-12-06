@@ -195,6 +195,7 @@ func ValidateSend(filename *string,
 			audioFormat := "wav"
 			pth := "/mnt/tts"
 			filePath := fmt.Sprintf("%s/%s_tts.%s", pth, *filename, audioFormat)
+			respFileName := fmt.Sprintf("%s_tts.%s", *filename, audioFormat)
 			_, eror := tts.GetDgFileTTS(ctx, reqResult, filePath)
 
 			if eror != nil {
@@ -205,7 +206,8 @@ func ValidateSend(filename *string,
 
 			// --- play sound of the result ---//
 
-			errResSoundPlay := playSound(ctx, h, filePath)
+			resUri := fmt.Sprintf("recording:%s", respFileName)
+			errResSoundPlay := playSound(ctx, h, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
 			}
