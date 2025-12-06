@@ -27,9 +27,6 @@ func Start(ctx context.Context, client ari.Client) {
 	sub := client.Bus().Subscribe(nil, "StasisStart")
 	defer sub.Cancel()
 
-	// subCtx, subCancel := context.WithCancel(context.Background())
-	// defer subCancel()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -122,14 +119,14 @@ func callHandl(mainCtx context.Context,
 				"sound:rick-astley",
 				client,
 				h,
-				secondRecord(&recFilename, &recResBody, &speakResBody, bridgeHandl, callChan)) //Second record with listen option and another message
+				secondRecord(&recFilename, &recResBody, &speakResBody, bridgeHandl, callChan, h)) //Second record with listen option and another message
 		}
 	}
 
 }
 
 func StopCall(ctx context.Context, h *ari.ChannelHandle) error {
-	err := playSound(ctx, h, "sound:vm-goodbye")
+	err := PlaySound(ctx, h, "sound:vm-goodbye")
 	log.Info("Stopping call", "Channel", h.ID())
 	h.Hangup()
 	return err
@@ -145,6 +142,7 @@ func ValidateSend(filename *string,
 	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
 	ch *ari.StasisStart,
 	bridgCh *ari.BridgeHandle,
+	h *ari.ChannelHandle,
 ) ChannelHandler {
 	return func(ctx context.Context, h *ari.ChannelHandle) error {
 		//Get the recording bite audio
@@ -208,7 +206,7 @@ func ValidateSend(filename *string,
 
 			resUri := fmt.Sprintf("recording:%s", respFileName)
 			log.Info("Print resUri", "resUri", resUri)
-			errResSoundPlay := playSound(ctx, h, resUri)
+			errResSoundPlay := PlaySound(ctx, h, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
 			}
