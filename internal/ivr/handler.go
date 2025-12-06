@@ -207,6 +207,7 @@ func ValidateSend(filename *string,
 			// --- play sound of the result ---//
 
 			resUri := fmt.Sprintf("recording:%s", respFileName)
+			log.Info("Print resUri", "resUri", resUri)
 			errResSoundPlay := playSound(ctx, h, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
