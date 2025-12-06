@@ -22,6 +22,7 @@ func PlaySound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) erro
 	log.Infof("Played %s", soundURI)
 	return nil
 }
+
 func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*play.Result, error) {
 	for {
 		select {

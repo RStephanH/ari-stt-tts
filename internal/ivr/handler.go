@@ -206,63 +206,12 @@ func ValidateSend(filename *string,
 
 			resUri := fmt.Sprintf("recording:%s", respFileName)
 			log.Info("Print resUri", "resUri", resUri)
-			errResSoundPlay := PlaySound(ctx, h, resUri)
+			plID := fmt.Sprintf("%s_ID", resUri)
+			_, errResSoundPlay := h.Play(plID, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
 			}
-			// // ---Result verification---
-			// log.Info("TTS format",
-			// 	"TransferEncoding", speakResponse.TransferEncoding,
-			// 	"ModelName", speakResponse.ModelName,
-			// 	"ContextType", speakResponse.ContextType,
-			// 	"Characters", speakResponse.Characters,
-			// )
-			// log.Info("Audio received", "bytes", raw.Len())
-			// log.Info("Calculate", "len(raw.data) % 640", raw.Len()%640)
-			//
-			// // ---External Media Part---
-			//
-			// params := externalmedia.ExternalMediaParams{
-			// 	ARIBaseURL: os.Getenv("ARI_EXTERNAL_MEDIA_BASE_URL"),
-			// 	Username:   os.Getenv("ARI_USERNAME"),
-			// 	Password:   os.Getenv("ARI_PASSWORD"),
-			//
-			// 	AppName: os.Getenv("ARI_APPLICATION_NAME"),
-			// 	HostIP:  os.Getenv("EXTERNAL_HOST_IP"),
-			// 	Port:    4002,
-			// 	Format:  "slin16",
-			// }
-			//
-			// extMediaCh, err := externalmedia.CreateExternalMediaChannel(params)
-			// if err != nil {
-			// 	log.Fatal("External Media Channel creation failed", "error", err)
-			// 	return err
-			// }
-			//
-			// //Add the channel to the bridge
-			// addChanRes := bridgCh.AddChannel(ch.Channel.ID)
-			// if addChanRes != nil {
-			// 	log.Fatal("Failed to add channel to bridge:", "error", addChanRes)
-			// }
-			// defer bridgCh.RemoveChannel(ch.Channel.ID)
-			//
-			// //Add the External Media Channel to the bridge
-			// bridgCh.AddChannel(extMediaCh.ID)
-			// defer bridgCh.RemoveChannel(extMediaCh.ID)
-			// defer extMediaCh.Close()
-			//
-			// // Wait for Asterisk to connect
-			// if err := extMediaCh.WaitForAsteriskRTP(10 * time.Second); err != nil {
-			// 	log.Fatal("Asterisk did not connect:", err)
-			// 	return err
-			// }
-			//
-			// pcm := raw.Bytes()
-			// result := extMediaCh.SendPCM(ctx, pcm)
-			// if result != nil {
-			// 	log.Error("Error sending PCM to External Media Channel:", "error", result)
-			// 	return result
-			// }
+			log.Info("Sound Played successfully", "sound", filePath)
 
 		}
 
