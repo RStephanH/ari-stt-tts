@@ -95,6 +95,7 @@ func callHandl(mainCtx context.Context,
 		<-end.Events()
 		cancel()
 	}()
+	log.Info("print channel handler ", "channelHandler", h)
 
 	recFilename := fmt.Sprintf("msg_%s_%d", h.ID(), time.Now().Unix())
 
@@ -203,6 +204,7 @@ func ValidateSend(filename *string,
 			resUri := fmt.Sprintf("recording:%s", respFileName)
 			log.Info("Print resUri", "resUri", resUri)
 			plID := fmt.Sprintf("%s_ID", resUri)
+			log.Info("print channel handler ", "channelHandler", ch)
 			_, errResSoundPlay := ch.Play(plID, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
