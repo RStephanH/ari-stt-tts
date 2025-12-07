@@ -35,8 +35,10 @@ func GetDgRawTTS(ctx context.Context, text string, raw *interfaces.RawResponse) 
 
 func GetDgFileTTS(ctx context.Context, text string, filePath string) (*apiSpeakResponseInterfaces.SpeakResponse, error) {
 	speakOptions := &interfaces.SpeakOptions{
-		Model:    "aura-2-thalia-en",
-		Encoding: "linear16",
+		Model:      "aura-2-thalia-en",
+		Encoding:   "linear16",
+		Container:  "wav",
+		SampleRate: 8000,
 	}
 
 	cl := client.NewWithDefaults()
