@@ -1,5 +1,6 @@
 services:
   ivr-server:
+    build: .
     image: ivr-server:mvp
     ports:
       - 4002:4002
