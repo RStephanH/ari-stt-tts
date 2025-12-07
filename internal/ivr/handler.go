@@ -88,7 +88,7 @@ func callHandl(mainCtx context.Context,
 
 		default:
 			DTMFHandl(mainCtx,
-				"sound:rick-astley",
+				"sound:after_recording",
 				client,
 				h,
 				secondRecord(&recFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
