@@ -2,8 +2,6 @@ package ai
 
 import (
 	"context"
-	// "encoding/json"
-
 	"os"
 
 	"github.com/charmbracelet/log"
