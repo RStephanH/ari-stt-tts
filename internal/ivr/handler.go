@@ -4,20 +4,16 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	// "os"
 	"time"
 
 	"ari/internal/ai"
 	"ari/internal/stt"
-
-	// "ari/internal/externalmedia"
 	"ari/internal/tts"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
 	apiPrerecordedInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
 	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
-	// "github.com/deepgram/deepgram-go-sdk/pkg/client/interfaces"
 )
 
 type ChannelHandler func(ctx context.Context, h *ari.ChannelHandle) error
@@ -41,31 +37,9 @@ func Start(ctx context.Context, client ari.Client) {
 
 			if chanHandl, ok := evt.(*ari.StasisStart); ok {
 				log.Infof("Events StasisStart Type = %T", chanHandl)
-				//Create a bridge mixed with StasisStart events
-				// mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, "mix_tts_bridge"),
-				// 	"mixing",
-				// 	"mix bridge for call channel and externalmedia channel")
-				// bridgeID := fmt.Sprintf("mix_%s", chanHandl.Channel.ID)
-				// mixBridgeHandl, err := client.Bridge().Create(ari.NewKey(ari.BridgeKey, bridgeID),
-				// 	"mixing",
-				// 	"mix bridge for call channel and externalmedia channel")
-				// if err != nil {
-				// 	log.Fatal("Failed to create bridge:", "error", err)
-				// }
-				// defer mixBridgeHandl.Delete()
-
-				////Add the channel to the bridge
-				//addChanRes := mixBridgeHandl.AddChannel(chanHandl.Channel.ID)
-				//if addChanRes != nil {
-				//	log.Fatal("Failed to add channel to bridge:", "error", addChanRes)
-				//}
-				//defer mixBridgeHandl.RemoveChannel(chanHandl.Channel.ID)
-
-				//Call the handler in a separate goroutine
 				go callHandl(ctx,
 					client.Channel().Get(chanHandl.Key(ari.ChannelKey, chanHandl.Channel.ID)),
 					client,
-					chanHandl,
 				)
 
 			}
@@ -76,7 +50,6 @@ func Start(ctx context.Context, client ari.Client) {
 func callHandl(mainCtx context.Context,
 	h *ari.ChannelHandle,
 	client ari.Client,
-	callChan *ari.StasisStart,
 ) {
 	h.Answer()
 	time.Sleep(2 * time.Second)
@@ -191,7 +164,6 @@ func ValidateSend(filename *string,
 			pth := "/mnt/tts"
 			URIFileName := fmt.Sprintf("%s_tts", *filename)
 			filePath := fmt.Sprintf("%s/%s_tts.%s", pth, *filename, audioFormat)
-			// respFileName := fmt.Sprintf("%s_tts.%s", *filename, audioFormat)
 			_, eror := tts.GetDgFileTTS(ctx, reqResult, filePath)
 
 			if eror != nil {
@@ -210,8 +182,6 @@ func ValidateSend(filename *string,
 				log.Error("Error playing the result of the request", "filePath", filePath)
 			}
 			log.Info("Sound Played successfully", "sound", filePath)
-
-			// plID := fmt.Sprintf("%s_ID", resUri)
 		}
 
 		return nil
