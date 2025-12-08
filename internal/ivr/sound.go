@@ -48,22 +48,3 @@ func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*
 		}
 	}
 }
-
-func welcomeMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {
-	go func() {
-		<-subCtx.Done()
-		log.Info("Abort request of welcomeMessage by dmtf func", "Stop", true)
-
-	}()
-	PlaySound(mainCtx, ch, "sound:welcome-ari")
-
-}
-
-func recordingMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {
-	go func() {
-		<-subCtx.Done()
-		log.Info("Abort request of recordingMessage by dmtf func", "Stop", true)
-
-	}()
-	PlaySound(mainCtx, ch, "sound:rick-astley")
-}
