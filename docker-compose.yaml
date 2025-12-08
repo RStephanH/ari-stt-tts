@@ -1,0 +1,10 @@
+services:
+  ivr-server:
+    build: .
+    image: ivr-server:mvp
+    ports:
+      - 4002:4002
+    volumes: 
+      - /var/spool/asterisk/recording:/mnt/tts
+    env_file:
+        - .env

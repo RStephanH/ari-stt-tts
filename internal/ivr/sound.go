@@ -8,7 +8,7 @@ import (
 	"github.com/charmbracelet/log"
 )
 
-func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) error {
+func PlaySound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) error {
 
 	go func() error {
 		<-ctx.Done()
@@ -22,6 +22,7 @@ func playSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) erro
 	log.Infof("Played %s", soundURI)
 	return nil
 }
+
 func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*play.Result, error) {
 	for {
 		select {
@@ -46,23 +47,4 @@ func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*
 
 		}
 	}
-}
-
-func welcomeMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {
-	go func() {
-		<-subCtx.Done()
-		log.Info("Abort request of welcomeMessage by dmtf func", "Stop", true)
-
-	}()
-	playSound(mainCtx, ch, "sound:welcome-ari")
-
-}
-
-func recordingMessage(mainCtx context.Context, subCtx context.Context, ch *ari.ChannelHandle) {
-	go func() {
-		<-subCtx.Done()
-		log.Info("Abort request of recordingMessage by dmtf func", "Stop", true)
-
-	}()
-	playSound(mainCtx, ch, "sound:rick-astley")
 }

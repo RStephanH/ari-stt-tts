@@ -13,6 +13,12 @@ import (
 )
 
 func main() {
+
+	log.Info("Loging the environment variable", "variable", os.Getenv("ARI_USERNAME"))
+	if os.Getenv("ARI_USERNAME") == "" {
+		log.Fatal("Failed to retrieve the environnement variable")
+	}
+
 	// Create ARI client
 	cl, err := ariutil.NewARIClient()
 
