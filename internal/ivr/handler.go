@@ -98,7 +98,7 @@ func callHandl(mainCtx context.Context,
 }
 
 func StopCall(ctx context.Context, h *ari.ChannelHandle) error {
-	err := PlaySound(ctx, h, "sound:vm-goodbye")
+	err := PlaySound(ctx, h, "sound:ari_goodbye")
 	log.Info("Stopping call", "Channel", h.ID())
 	h.Hangup()
 	return err
