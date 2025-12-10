@@ -191,6 +191,12 @@ ari-stt-tts/
 │
 ├── assets/       <-- prerecorded audio message for welcoming (all the audio files in this directory not the directory need to be copied into /var/lib/asterisk/sounds/en of the asterisk server)
 │
+├── asterisk/ <--- scripts for the asterisk server
+│   └── installation/
+│                  ├─modules/
+                   └──main.sh
+│
+│
 ├── internal/
 │   ├── ai/ <-- gemini
 │   ├── ariutil/ <-- client web socket of ARI
