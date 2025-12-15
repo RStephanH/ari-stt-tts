@@ -153,7 +153,13 @@ func ValidateSend(filename *string,
 			log.Info("Gemini chat session created")
 
 			// Send the request to Gemini
-			reqResult, err := ai.SendGeminiMessage(ctx, gemChat, transcript) //Send the transcript to Gemini
+
+			geminiPrompt := fmt.Sprintf(
+				"You are a voice assistant in a phone call. Reply using plain spoken text only. Do not use markdown, lists, emojis, symbols, or formatting. Write short, clear sentences that sound natural when read aloud. Respond to the following user request: %s",
+				transcript,
+			)
+
+			reqResult, err := ai.SendGeminiMessage(ctx, gemChat, geminiPrompt) //Send the transcript to Gemini
 			if err != nil {
 				log.Error("Error sending message to Gemini", "error", err)
 				return err
