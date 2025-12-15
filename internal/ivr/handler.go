@@ -115,6 +115,9 @@ func ValidateSend(filename *string,
 	ch *ari.ChannelHandle,
 ) ChannelHandler {
 	return func(ctx context.Context, h *ari.ChannelHandle) error {
+		//Waiting music section
+		waitingSong, err := ch.Play("waitingSong ID", "sound:rick-astley")
+
 		//Get the recording bite audio
 		audio, err := downloadRecordingFromARI(ctx, filename)
 		if err != nil {
@@ -177,6 +180,13 @@ func ValidateSend(filename *string,
 			resUri := fmt.Sprintf("recording:%s", URIFileName)
 			log.Info("Print resUri", "resUri", resUri)
 			log.Info("print channel handler ", "channelHandler", ch)
+			//stop waiting song
+			if waitingSong != nil {
+				err := waitingSong.Stop()
+				if err != nil {
+					log.Warn("Error stoping waiting music song", "Error", err)
+				}
+			}
 			_, errResSoundPlay := ch.Play(resUri, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
