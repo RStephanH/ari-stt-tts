@@ -76,7 +76,7 @@ func callHandl(mainCtx context.Context,
 		"sound:welcome-ari",
 		client,
 		h,
-		firstRecord(recFilename)) //First record wiht welcome message
+		firstRecord(recFilename), []string{"1", "0", "#"}) //First record wiht welcome message
 
 	var recResBody apiPrerecordedInterfaces.PreRecordedResponse
 	var speakResBody apiSpeakResponseInterfaces.SpeakResponse
@@ -85,7 +85,9 @@ func callHandl(mainCtx context.Context,
 		"sound:after_recording",
 		client,
 		h,
-		secondRecord(recFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
+		secondRecord(recFilename, &recResBody, &speakResBody, h),
+		[]string{"1", "2", "3", "0", "#"},
+	) //Second record with listen option and another message
 
 	resFilename := fmt.Sprintf("%s_tts", recFilename)
 
@@ -100,7 +102,10 @@ func callHandl(mainCtx context.Context,
 				"sound:after_recording",
 				client,
 				h,
-				thirdRecord(recFilename, resFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
+				thirdRecord(recFilename, resFilename, &recResBody, &speakResBody, h),
+				[]string{"1", "2", "3", "4", "0", "#"},
+			) //Third record with listen option both for the request and the response of the request
+			//Also make another request
 		}
 	}
 
