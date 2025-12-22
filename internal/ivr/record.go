@@ -14,11 +14,11 @@ import (
 	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
 )
 
-func RecordingRequest(filename *string) ChannelHandler {
+func RecordingRequest(filename string) ChannelHandler {
 	return func(ctx context.Context, ch *ari.ChannelHandle) error {
 		// The default directory for recordings is /var/spool/asterisk/recording/
 
-		rec, err := ch.Record(*filename, &ari.RecordingOptions{
+		rec, err := ch.Record(filename, &ari.RecordingOptions{
 			Format:      "wav",
 			MaxDuration: 120 * time.Second,
 			MaxSilence:  5 * time.Second,
@@ -30,7 +30,7 @@ func RecordingRequest(filename *string) ChannelHandler {
 		go func() {
 			<-ctx.Done()
 			rec.Stop()
-			log.Info("Context cancelled, recording stopped.", "filename", *filename)
+			log.Info("Context cancelled, recording stopped.", "filename", filename)
 
 		}()
 
@@ -47,18 +47,19 @@ func RecordingRequest(filename *string) ChannelHandler {
 	}
 }
 
-func ListentRecording(filename *string) ChannelHandler {
+func ListentRecording(filename string) ChannelHandler {
+	// PERF: change the ch.Play function by the PromptFunction
 	return func(ctx context.Context, ch *ari.ChannelHandle) error {
-		log.Info("Playing recording", "filename", *filename)
-		plabackId := fmt.Sprintf("recording:%s", *filename)
-		mediaURI := fmt.Sprintf("recording:%s", *filename)
+		log.Info("Playing recording", "filename", filename)
+		plabackId := fmt.Sprintf("recording:%s", filename)
+		mediaURI := fmt.Sprintf("recording:%s", filename)
 		_, err := ch.Play(plabackId, mediaURI)
 		return err
 	}
 }
 
-func downloadRecordingFromARI(ctx context.Context, recordingName *string) ([]byte, error) {
-	url := fmt.Sprintf("%s/recordings/stored/%s/file", os.Getenv("ARI_URL"), *recordingName)
+func downloadRecordingFromARI(ctx context.Context, recordingName string) ([]byte, error) {
+	url := fmt.Sprintf("%s/recordings/stored/%s/file", os.Getenv("ARI_URL"), recordingName)
 	log.Info("GET the ressource", "URL", url)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
@@ -77,7 +78,7 @@ func downloadRecordingFromARI(ctx context.Context, recordingName *string) ([]byt
 
 }
 
-func firstRecord(filename *string) map[string]ChannelHandler {
+func firstRecord(filename string) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
 		"1":       RecordingRequest(filename),
 		"0":       StopCall,
@@ -85,7 +86,7 @@ func firstRecord(filename *string) map[string]ChannelHandler {
 	}
 }
 
-func secondRecord(filename *string,
+func secondRecord(filename string,
 	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
 	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
 	h *ari.ChannelHandle) map[string]ChannelHandler {
@@ -94,6 +95,22 @@ func secondRecord(filename *string,
 		"1":       RecordingRequest(filename),
 		"2":       ListentRecording(filename),
 		"3":       ValidateSend(filename, recResBody, speakResBody, h),
+		"0":       StopCall,
+		"default": DoNothing,
+	}
+
+}
+
+func thirdRecord(filename string, filenameRes string,
+	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
+	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
+	h *ari.ChannelHandle) map[string]ChannelHandler {
+
+	return map[string]ChannelHandler{
+		"1":       RecordingRequest(filename),
+		"2":       ListentRecording(filename),
+		"3":       ValidateSend(filename, recResBody, speakResBody, h),
+		"4":       ListentRecording(filenameRes),
 		"0":       StopCall,
 		"default": DoNothing,
 	}
