@@ -76,9 +76,18 @@ func callHandl(mainCtx context.Context,
 		"sound:welcome-ari",
 		client,
 		h,
-		firstRecord(&recFilename)) //First record wiht welcome message
+		firstRecord(recFilename)) //First record wiht welcome message
+
 	var recResBody apiPrerecordedInterfaces.PreRecordedResponse
 	var speakResBody apiSpeakResponseInterfaces.SpeakResponse
+
+	DTMFHandl(mainCtx,
+		"sound:after_recording",
+		client,
+		h,
+		secondRecord(recFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
+
+	resFilename := fmt.Sprintf("%s_tts", recFilename)
 
 	for {
 		select {
@@ -91,7 +100,7 @@ func callHandl(mainCtx context.Context,
 				"sound:after_recording",
 				client,
 				h,
-				secondRecord(&recFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
+				thirdRecord(recFilename, resFilename, &recResBody, &speakResBody, h)) //Second record with listen option and another message
 		}
 	}
 
@@ -109,7 +118,7 @@ func DoNothing(ctx context.Context, h *ari.ChannelHandle) error {
 	return nil
 }
 
-func ValidateSend(filename *string,
+func ValidateSend(filename string,
 	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
 	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
 	ch *ari.ChannelHandle,
@@ -171,8 +180,8 @@ func ValidateSend(filename *string,
 			// --- Generate sound file of result ---- //
 			audioFormat := "wav"
 			pth := "/mnt/tts"
-			URIFileName := fmt.Sprintf("%s_tts", *filename)
-			filePath := fmt.Sprintf("%s/%s_tts.%s", pth, *filename, audioFormat)
+			URIFileName := fmt.Sprintf("%s_tts", filename)
+			filePath := fmt.Sprintf("%s/%s_tts.%s", pth, filename, audioFormat)
 			_, eror := tts.GetDgFileTTS(ctx, reqResult, filePath)
 
 			if eror != nil {
@@ -193,6 +202,7 @@ func ValidateSend(filename *string,
 					log.Warn("Error stoping waiting music song", "Error", err)
 				}
 			}
+			// PERF: change the ch.Play function by the PromptFunction
 			_, errResSoundPlay := ch.Play(resUri, resUri)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
