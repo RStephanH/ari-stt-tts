@@ -33,7 +33,7 @@ func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*
 		default:
 			res, er := play.Prompt(ctx, ch,
 				play.URI(soundURI),
-				play.MatchDiscrete([]string{"1", "2", "3", "0", "#"}),
+				play.MatchDiscrete([]string{"1", "2", "3", "4", "0", "#"}),
 				play.Replays(3)).Result()
 			if er != nil {
 				log.Info("Error detected", "error", er)
