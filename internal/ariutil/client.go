@@ -9,7 +9,6 @@ import (
 
 func NewARIClient() (ari.Client, error) {
 
-	// TODO: Move credentials to config or environment variables
 	clientOptions := native.Options{
 		Application:  os.Getenv("ARI_APPLICATION_NAME"),
 		Username:     os.Getenv("ARI_USERNAME"),
