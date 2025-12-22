@@ -207,8 +207,7 @@ func ValidateSend(filename string,
 					log.Warn("Error stoping waiting music song", "Error", err)
 				}
 			}
-			// PERF: change the ch.Play function by the PromptFunction
-			_, errResSoundPlay := ch.Play(resUri, resUri)
+			_, errResSoundPlay := promptSound(ctx, ch, resUri, []string{"#"}, 1)
 			if errResSoundPlay != nil {
 				log.Error("Error playing the result of the request", "filePath", filePath)
 			}
