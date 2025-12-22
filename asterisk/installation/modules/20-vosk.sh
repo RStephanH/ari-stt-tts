@@ -164,8 +164,8 @@ ensure_modules_conf() {
 
 start_vosk_container() {
   log_info "Starting VOSK Docker container..."
-  local name="vosk-model-$(echo "$MODEL_IMAGE" | tr '/:' '__')"
-
+  local name
+  name="vosk-model-$(echo "$MODEL_IMAGE" | tr '/:' '__')"
   # Check if container exists and remove it
   if docker ps -a --format '{{.Names}}' | grep -qx "$name"; then
     log_info "Removing existing container: $name"
