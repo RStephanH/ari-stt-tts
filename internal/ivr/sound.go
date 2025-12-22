@@ -24,6 +24,7 @@ func PlaySound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) erro
 }
 
 func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*play.Result, error) {
+	// PERF: put the digit for the dtmf signal as parameter and the number of replay too
 	for {
 		select {
 		case <-ctx.Done():
