@@ -11,7 +11,9 @@ import (
 func DTMFHandl(mainCtx context.Context,
 	sound string, client ari.Client,
 	ch *ari.ChannelHandle,
-	actions map[string]ChannelHandler) {
+	actions map[string]ChannelHandler,
+	listDigOpt []string,
+) {
 
 	sub := client.Bus().Subscribe(nil, "RecordingFinished")
 	defer sub.Cancel()
@@ -25,7 +27,7 @@ func DTMFHandl(mainCtx context.Context,
 			return
 		default:
 
-			if res, er := promptSound(mainCtx, ch, sound); er == nil {
+			if res, er := promptSound(mainCtx, ch, sound, listDigOpt, 3); er == nil {
 
 				if action, ok := actions[res.DTMF]; ok {
 					if err := action(mainCtx, ch); err != nil {

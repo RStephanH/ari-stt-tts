@@ -23,8 +23,7 @@ func PlaySound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) erro
 	return nil
 }
 
-func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*play.Result, error) {
-	// PERF: put the digit for the dtmf signal as parameter and the number of replay too
+func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string, listDigtOpt []string, numReplay int) (*play.Result, error) {
 	for {
 		select {
 		case <-ctx.Done():
@@ -33,8 +32,8 @@ func promptSound(ctx context.Context, ch *ari.ChannelHandle, soundURI string) (*
 		default:
 			res, er := play.Prompt(ctx, ch,
 				play.URI(soundURI),
-				play.MatchDiscrete([]string{"1", "2", "3", "4", "0", "#"}),
-				play.Replays(3)).Result()
+				play.MatchDiscrete(listDigtOpt),
+				play.Replays(numReplay)).Result()
 			if er != nil {
 				log.Info("Error detected", "error", er)
 				return nil, er

@@ -48,12 +48,11 @@ func RecordingRequest(filename string) ChannelHandler {
 }
 
 func ListentRecording(filename string) ChannelHandler {
-	// PERF: change the ch.Play function by the PromptFunction
 	return func(ctx context.Context, ch *ari.ChannelHandle) error {
 		log.Info("Playing recording", "filename", filename)
-		plabackId := fmt.Sprintf("recording:%s", filename)
 		mediaURI := fmt.Sprintf("recording:%s", filename)
-		_, err := ch.Play(plabackId, mediaURI)
+		_, err := promptSound(ctx, ch, mediaURI, []string{"#"}, 1)
+
 		return err
 	}
 }
