@@ -49,7 +49,7 @@ asterisk_dependencies() {
     PACKAGES_ARCH="$PACKAGES_ARCH postgresql-libs unixodbc neon gmime lua uriparser libxslt openssl"
     PACKAGES_ARCH="$PACKAGES_ARCH libmariadbclient bluez-libs radcli freetds bash libcap"
     PACKAGES_ARCH="$PACKAGES_ARCH net-snmp libnewt popt libical spandsp"
-    PACKAGES_ARCH="$PACKAGES_ARCH c-client binutils libsrtp gsm doxygen graphviz zlib libldap"
+    PACKAGES_ARCH="$PACKAGES_ARCH c-client binutils libsrtp gsm doxygen graphviz zlib-ng-compat libldap"
     PACKAGES_ARCH="$PACKAGES_ARCH fftw libsndfile unbound"
     # Asterisk: for the unpackaged below:
     PACKAGES_ARCH="$PACKAGES_ARCH wget subversion"
