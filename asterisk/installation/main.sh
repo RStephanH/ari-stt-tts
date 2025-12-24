@@ -391,7 +391,10 @@ main() {
   echo "  VOSK Port: $VOSK_PORT"
   echo "  Log File: $LOG_FILE"
 
-  export packman=check_os
+  local packman
+  packman=$(check_os)
+  export packman
+
   check_prerequisites
   create_backup
 
