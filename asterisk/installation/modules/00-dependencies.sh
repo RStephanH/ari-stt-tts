@@ -92,6 +92,8 @@ install_docker_ce() {
 
   #PERF: adapt or add for all debian based
   # ubuntu based
+  packman=$1
+  echo "$packman"
   if [[ "$packman" == "apt" ]]; then
     # Remove any old Docker packages
     log_info "Removing old Docker packages..."
@@ -178,7 +180,7 @@ dependencies_main() {
   # Install Docker CE
   #install_docker_ce
   if ! command -v docker >/dev/null; then
-    install_docker_ce
+    install_docker_ce "$packman"
   fi
 
   log_success "All dependencies installed successfully!"
