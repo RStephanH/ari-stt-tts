@@ -75,34 +75,45 @@ install_packages() {
 install_docker_ce() {
   log_info "Installing Docker CE (Community Edition)..."
 
-  # Remove any old Docker packages
-  log_info "Removing old Docker packages..."
-  sudo apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+  #PERF: adapt or add for all debian based
+  # ubuntu based
+  if [[ "$packman" == "apt" ]]; then
+    # Remove any old Docker packages
+    log_info "Removing old Docker packages..."
+    sudo apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
 
-  # Add Docker's official GPG key
-  log_info "Adding Docker GPG key..."
-  sudo mkdir -p /etc/apt/keyrings
-  if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg; then
-    log_error "Failed to add Docker GPG key"
-    exit 1
-  fi
+    # Add Docker's official GPG key
+    log_info "Adding Docker GPG key..."
+    sudo mkdir -p /etc/apt/keyrings
+    if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg; then
+      log_error "Failed to add Docker GPG key"
+      exit 1
+    fi
 
-  # Set up the Docker repository
-  log_info "Setting up Docker repository..."
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+    # Set up the Docker repository
+    log_info "Setting up Docker repository..."
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
 
-  # Update package index
-  log_info "Updating package index for Docker..."
-  if ! sudo apt update; then
-    log_error "Failed to update package index after adding Docker repository"
-    exit 1
-  fi
+    # Update package index
+    log_info "Updating package index for Docker..."
+    if ! sudo apt update; then
+      log_error "Failed to update package index after adding Docker repository"
+      exit 1
+    fi
 
-  # Install Docker CE
-  log_info "Installing Docker CE packages..."
-  if ! sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-    log_error "Failed to install Docker CE packages"
-    exit 1
+    # Install Docker CE
+    log_info "Installing Docker CE packages..."
+    if ! sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+      log_error "Failed to install Docker CE packages"
+      exit 1
+    fi
+  #Arch based
+  elif [[ "$packman" == "pacman" ]]; then
+    log_info "Installing Docker on Arch based distribution ..."
+    if ! sudo pacman -Sy --noconfirm docker; then
+      log_error "Failed to install Docker "
+      exit 1
+    fi
   fi
 
   # Add current user to docker group
@@ -133,16 +144,25 @@ install_docker_ce() {
   fi
 }
 
-# Install packages by category
-install_packages "core build tools" "${CORE_DEPS[@]}"
-install_packages "Asterisk libraries" "${ASTERISK_DEPS[@]}"
-install_packages "media processing tools" "${MEDIA_DEPS[@]}"
-install_packages "Python environment" "${PYTHON_DEPS[@]}"
+dependencies_main() {
+  echo "$packman"
+  # Install packages by category
+  # TODO: Comments temporarily and leave the dependencies handle by the script provide by Asterisk
+  #
+  # install_packages "core build tools" "${CORE_DEPS[@]}"
+  # install_packages "Asterisk libraries" "${ASTERISK_DEPS[@]}"
+  # install_packages "media processing tools" "${MEDIA_DEPS[@]}"
+  # install_packages "Python environment" "${PYTHON_DEPS[@]}"
 
-# Install Docker CE
-#install_docker_ce
-if ! command -v docker >/dev/null; then
-  install_docker_ce
-fi
+  # Install Docker CE
+  #install_docker_ce
+  if ! command -v docker >/dev/null; then
+    install_docker_ce
+  fi
 
-log_success "All dependencies installed successfully!"
+  log_success "All dependencies installed successfully!"
+
+}
+
+# function call section
+dependencies_main
