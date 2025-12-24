@@ -34,10 +34,17 @@ echo "🛠️ Installing Asterisk prerequisites and Docker CE..."
 
 # Update package lists
 log_info "Updating package lists..."
-sudo apt update || {
-  log_error "Failed to update package lists"
-  exit 1
-}
+
+if [[ "$packman" == "apt" ]]; then
+  sudo apt update || {
+    log_error "Failed to update package lists"
+    exit 1
+  }
+elif [[ "$packman" == "pacman" ]]; then
+  sudo pacman -Sy || {
+    log_error "Failed to update package lists"
+  }
+fi
 
 # Core build dependencies
 CORE_DEPS=(
