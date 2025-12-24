@@ -32,19 +32,22 @@ trap 'error_handler $LINENO' ERR
 
 echo "🛠️ Installing Asterisk prerequisites and Docker CE..."
 
-# Update package lists
-log_info "Updating package lists..."
+update_pkg_lists() {
+  # Update package lists
+  log_info "Updating package lists..."
 
-if [[ "$packman" == "apt" ]]; then
-  sudo apt update || {
-    log_error "Failed to update package lists"
-    exit 1
-  }
-elif [[ "$packman" == "pacman" ]]; then
-  sudo pacman -Sy || {
-    log_error "Failed to update package lists"
-  }
-fi
+  if [[ "$packman" == "apt" ]]; then
+    sudo apt update || {
+      log_error "Failed to update package lists"
+      exit 1
+    }
+  elif [[ "$packman" == "pacman" ]]; then
+    sudo pacman -Sy || {
+      log_error "Failed to update package lists"
+    }
+  fi
+
+}
 
 # Core build dependencies
 CORE_DEPS=(
@@ -153,6 +156,8 @@ install_docker_ce() {
 
 dependencies_main() {
   echo "$packman"
+
+  update_pkg_lists
   # Install packages by category
   # TODO: Comments temporarily and leave the dependencies handle by the script provide by Asterisk
   #
