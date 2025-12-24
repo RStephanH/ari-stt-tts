@@ -84,17 +84,17 @@ cd "$ASTERISK_DIR" || {
   exit 1
 }
 
-# Get MP3 support
-log_info "Installing MP3 support..."
-if ! sudo contrib/scripts/get_mp3_source.sh; then
-  log_error "Failed to install MP3 support"
-  exit 1
-fi
-
 # Install optional dependencies
 log_info "Installing optional dependencies..."
 if ! sudo ./contrib/scripts/install_prereq install; then
   log_error "Failed to install Asterisk prerequisites"
+  exit 1
+fi
+
+# Get MP3 support
+log_info "Installing MP3 support..."
+if ! sudo contrib/scripts/get_mp3_source.sh; then
+  log_error "Failed to install MP3 support"
   exit 1
 fi
 
