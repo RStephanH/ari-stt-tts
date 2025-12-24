@@ -205,7 +205,7 @@ check_os() {
     ;;
   esac
 
-  return "$packmanager"
+  echo "$packmanager"
 
 }
 
