@@ -90,23 +90,12 @@ install_packages() {
 install_docker_ce() {
   log_info "Installing Docker..."
 
-  #PERF: adapt or add for all debian based
-  # ubuntu based
   packman=$1
   echo "$packman"
   case "$packman" in
   apt)
     log_info "Detected Debian/Ubuntu based system"
-    ;;
-  pacman)
-    log_info "Detected Arch based system"
-    ;;
-  *)
-    log_error "Unsupported package manager: $packman"
-    exit 1
-    ;;
-  esac
-  if [[ "$packman" == "apt" ]]; then
+
     # Remove any old Docker packages
     log_info "Removing old Docker packages..."
     sudo apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
@@ -136,18 +125,22 @@ install_docker_ce() {
       log_error "Failed to install Docker CE packages"
       exit 1
     fi
-  #Arch based
-  elif [[ "$packman" == "pacman" ]]; then
+    ;;
+
+  pacman)
+    log_info "Detected Arch based system"
+
     log_info "Installing Docker on Arch based distribution ..."
     if ! sudo pacman -Sy docker --noconfirm; then
       log_error "Failed to install Docker "
       exit 1
     fi
-
-  else
-    log_error "package manager none of listed"
+    ;;
+  *)
+    log_error "Unsupported package manager: $packman"
     exit 1
-  fi
+    ;;
+  esac
 
   # Add current user to docker group
   if ! groups "$USER" | grep -q docker; then
