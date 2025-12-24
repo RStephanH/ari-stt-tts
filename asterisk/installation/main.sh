@@ -16,7 +16,7 @@ ERROR_OCCURRED=false
 # Default options
 SKIP_DEPS=false
 SKIP_ASTERISK=false
-SKIP_VOSK=false
+SKIP_VOSK=true
 VOSK_MODEL="alphacep/kaldi-en:latest"
 VOSK_PORT="2700"
 
@@ -175,17 +175,51 @@ Note: All activities are logged to /tmp/asterisk-install-TIMESTAMP.log
 EOF
 }
 
+check_os() {
+  # == Detect Linux Distro ==
+  distro=""
+  if [[ -f /etc/os-release ]]; then
+    # source (import) the file so we get variable like ID, NAME, VERSION_ID
+    . /etc/os-release
+    distro=$ID
+  else
+    echo "❌Could not detect distro (no /etc/os-release)"
+    exit 1
+  fi
+
+  if [[ $distro == "arch" ]]; then
+    echo "Damn it😯! You use Arch BTW!"
+  else
+    echo ">> Detected distro: $distro"
+  fi
+
+  case "$distro" in
+  arch | manjaro | endeavouros | cachyos)
+    packmanager="pacman"
+    ;;
+  debian | ubuntu)
+    packmanager="apt"
+    ;;
+  *)
+    echo "Unsupported distro: $distro"
+    ;;
+  esac
+
+  return "$packmanager"
+
+}
+
 check_prerequisites() {
   CURRENT_MODULE="Prerequisites Check"
   CURRENT_STEP="System validation"
 
   log_step "Checking prerequisites..."
 
-  # Check if running on supported OS
-  if ! command -v apt >/dev/null 2>&1; then
-    log_error "This script currently supports Debian/Ubuntu systems only"
-    exit 1
-  fi
+  # # Check if running on supported OS
+  # if ! command -v apt >/dev/null 2>&1; then
+  #   log_error "This script currently supports Debian/Ubuntu systems only"
+  #   exit 1
+  # fi
 
   # Check OS version
   if [[ -f /etc/os-release ]]; then
@@ -357,6 +391,7 @@ main() {
   echo "  VOSK Port: $VOSK_PORT"
   echo "  Log File: $LOG_FILE"
 
+  export packman=check_os
   check_prerequisites
   create_backup
 
