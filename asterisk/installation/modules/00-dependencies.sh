@@ -94,6 +94,18 @@ install_docker_ce() {
   # ubuntu based
   packman=$1
   echo "$packman"
+  case "$packman" in
+  apt)
+    log_info "Detected Debian/Ubuntu based system"
+    ;;
+  pacman)
+    log_info "Detected Arch based system"
+    ;;
+  *)
+    log_error "Unsupported package manager: $packman"
+    exit 1
+    ;;
+  esac
   if [[ "$packman" == "apt" ]]; then
     # Remove any old Docker packages
     log_info "Removing old Docker packages..."
