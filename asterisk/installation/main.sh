@@ -187,12 +187,6 @@ check_os() {
     exit 1
   fi
 
-  if [[ $distro == "arch" ]]; then
-    echo "Damn it😯! You use Arch BTW!"
-  else
-    echo ">> Detected distro: $distro"
-  fi
-
   case "$distro" in
   arch | manjaro | endeavouros | cachyos)
     packmanager="pacman"
