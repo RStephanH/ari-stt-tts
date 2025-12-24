@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+#-----/* Log function section ---*/ --------
+
 # Import logging from main script
 log_info() {
   local msg="[DEPS] $1"
@@ -28,7 +30,10 @@ error_handler() {
   exit $exit_code
 }
 
+# Error handler
 trap 'error_handler $LINENO' ERR
+
+# /----- function declaration section ---*/ ------------
 
 echo "🛠️ Installing Asterisk prerequisites and Docker CE..."
 
@@ -83,7 +88,7 @@ install_packages() {
 }
 
 install_docker_ce() {
-  log_info "Installing Docker CE (Community Edition)..."
+  log_info "Installing Docker..."
 
   #PERF: adapt or add for all debian based
   # ubuntu based
@@ -120,10 +125,14 @@ install_docker_ce() {
   #Arch based
   elif [[ "$packman" == "pacman" ]]; then
     log_info "Installing Docker on Arch based distribution ..."
-    if ! sudo pacman -Sy --noconfirm docker; then
+    if ! sudo pacman -Sy docker --noconfirm; then
       log_error "Failed to install Docker "
       exit 1
     fi
+
+  else
+    log_error "package manager none of listed"
+    exit 1
   fi
 
   # Add current user to docker group
