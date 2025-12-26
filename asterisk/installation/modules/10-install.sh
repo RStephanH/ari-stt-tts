@@ -203,7 +203,7 @@ install_main() {
       log_success "Systemd directory found"
       cd "$SYSTEMD_CONF_DIR" && ls -A
 
-      if command -v rsync; then
+      if command -v rsync >/dev/null 2>&1; then
         if ! sudo rsync -av \
           --exclude="README.txt" \
           "$SYSTEMD_CONF_DIR"/* \
