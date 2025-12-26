@@ -199,9 +199,28 @@ install_main() {
     if [[ -d "$SYSTEMD_CONF_DIR" ]]; then
       log_success "Systemd directory found"
       cd "$SYSTEMD_CONF_DIR" && ls -A
-      exit 0
+
+      if command -v rsync; then
+        if ! sudo rsync "$SYSTEMD_CONF_DIR/*" --exclude="README.txt" /etc/systemd/system/; then
+          log_error "Failed to copy systemd files"
+          exit 1
+        fi
+        log_success "Systemd files copied!"
+        log_info "Please check them before starting or enabling anydeamon"
+        sleep 3
+      else
+        if ! sudo cp -u "$SYSTEMD_CONF_DIR/*.socket" "$SYSTEMD_CONF_DIR/*.service" "$SYSTEMD_CONF_DIR/*timer" "/etc/systemd/system/"; then
+          log_error "Failed to copy systemd files"
+          exit 1
+        fi
+        log_success "Systemd files copied!"
+        log_info "Please check them before starting or enabling anydeamon"
+        sleep 3
+      fi
+
     else
       log_error "Unable to find the systemd directory"
+      exit 1
     fi
     ;;
   *)
