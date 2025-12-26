@@ -324,6 +324,8 @@ post_install_checks() {
 
   log_warning "Please check the systemd files in /etc/systemd/system/"
   CURRENT_STEP=""
+  log_info "Reloading the daemon"
+  sudo systemctl daemon-reload
 }
 
 print_summary() {
