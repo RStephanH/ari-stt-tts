@@ -192,11 +192,26 @@ install_main() {
     exit 1
   fi
 
-  log_info "Installing init scripts..."
-  if ! sudo make config; then
-    log_error "Failed to install init scripts"
-    exit 1
-  fi
+  case $packman in
+  pacman)
+    log_info "Installing init scripts for Arch based and systemd... "
+    SYSTEMD_CONF_DIR="$ASTERISK_DIR/contrib/systemd"
+    if [[ -d "$SYSTEMD_CONF_DIR" ]]; then
+      log_success "Systemd directory found"
+      cd "$SYSTEMD_CONF_DIR" && ls -A
+      exit 0
+    else
+      log_error "Unable to find the systemd directory"
+    fi
+    ;;
+  *)
+    log_info "Installing init scripts..."
+    if ! sudo make config; then
+      log_error "Failed to install init scripts"
+      exit 1
+    fi
+    ;;
+  esac
 
   # Set proper ownership
   log_info "Setting permissions..."
