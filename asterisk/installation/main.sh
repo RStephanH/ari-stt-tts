@@ -16,7 +16,7 @@ ERROR_OCCURRED=false
 # Default options
 SKIP_DEPS=false
 SKIP_ASTERISK=false
-SKIP_VOSK=false
+SKIP_VOSK=true
 VOSK_MODEL="alphacep/kaldi-en:latest"
 VOSK_PORT="2700"
 
@@ -175,17 +175,39 @@ Note: All activities are logged to /tmp/asterisk-install-TIMESTAMP.log
 EOF
 }
 
+check_os() {
+  # == Detect Linux Distro ==
+  distro=""
+  if [[ -f /etc/os-release ]]; then
+    # source (import) the file so we get variable like ID, NAME, VERSION_ID
+    . /etc/os-release
+    distro=$ID
+  else
+    echo "❌Could not detect distro (no /etc/os-release)"
+    exit 1
+  fi
+
+  case "$distro" in
+  arch | manjaro | endeavouros | cachyos)
+    packmanager="pacman"
+    ;;
+  debian | ubuntu)
+    packmanager="apt"
+    ;;
+  *)
+    echo "Unsupported distro: $distro"
+    ;;
+  esac
+
+  echo "$packmanager"
+
+}
+
 check_prerequisites() {
   CURRENT_MODULE="Prerequisites Check"
   CURRENT_STEP="System validation"
 
   log_step "Checking prerequisites..."
-
-  # Check if running on supported OS
-  if ! command -v apt >/dev/null 2>&1; then
-    log_error "This script currently supports Debian/Ubuntu systems only"
-    exit 1
-  fi
 
   # Check OS version
   if [[ -f /etc/os-release ]]; then
@@ -202,7 +224,7 @@ check_prerequisites() {
   fi
 
   # Check if required module scripts exist
-  local required_scripts=("00-dependencies.sh" "10-install.sh" "20-vosk.sh")
+  local required_scripts=("00-dependencies.sh" "10-install.sh")
   for script in "${required_scripts[@]}"; do
     if [[ ! -f "$MODULES_DIR/$script" ]]; then
       log_error "Required script not found: $MODULES_DIR/$script"
@@ -298,14 +320,12 @@ post_install_checks() {
   if command -v docker >/dev/null 2>&1; then
     docker_version=$(docker --version 2>/dev/null || echo "Unknown")
     log_success "Docker CE: $docker_version"
-
-    vosk_containers=$(docker ps --filter "name=vosk-model" --format "{{.Names}}" | wc -l)
-    if [[ $vosk_containers -gt 0 ]]; then
-      log_success "VOSK container(s) running: $vosk_containers"
-    fi
   fi
 
+  log_warning "Please check the systemd files in /etc/systemd/system/"
   CURRENT_STEP=""
+  log_info "Reloading the daemon"
+  sudo systemctl daemon-reload
 }
 
 print_summary() {
@@ -356,6 +376,10 @@ main() {
   echo "  VOSK Model: $VOSK_MODEL"
   echo "  VOSK Port: $VOSK_PORT"
   echo "  Log File: $LOG_FILE"
+
+  local packman
+  packman=$(check_os)
+  export packman
 
   check_prerequisites
   create_backup

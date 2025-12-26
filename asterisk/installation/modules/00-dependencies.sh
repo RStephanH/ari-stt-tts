@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+#-----/* Log function section ---*/ --------
+
 # Import logging from main script
 log_info() {
   local msg="[DEPS] $1"
@@ -28,15 +30,28 @@ error_handler() {
   exit $exit_code
 }
 
+# Error handler
 trap 'error_handler $LINENO' ERR
+
+# /----- function declaration section ---*/ ------------
 
 echo "🛠️ Installing Asterisk prerequisites and Docker CE..."
 
-# Update package lists
-log_info "Updating package lists..."
-sudo apt update || {
-  log_error "Failed to update package lists"
-  exit 1
+update_pkg_lists() {
+  # Update package lists
+  log_info "Updating package lists..."
+
+  if [[ "$packman" == "apt" ]]; then
+    sudo apt update || {
+      log_error "Failed to update package lists"
+      exit 1
+    }
+  elif [[ "$packman" == "pacman" ]]; then
+    sudo pacman -Sy || {
+      log_error "Failed to update package lists"
+    }
+  fi
+
 }
 
 # Core build dependencies
@@ -73,37 +88,59 @@ install_packages() {
 }
 
 install_docker_ce() {
-  log_info "Installing Docker CE (Community Edition)..."
+  log_info "Installing Docker..."
 
-  # Remove any old Docker packages
-  log_info "Removing old Docker packages..."
-  sudo apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+  packman=$1
+  echo "$packman"
+  case "$packman" in
+  apt)
+    log_info "Detected Debian/Ubuntu based system"
 
-  # Add Docker's official GPG key
-  log_info "Adding Docker GPG key..."
-  sudo mkdir -p /etc/apt/keyrings
-  if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg; then
-    log_error "Failed to add Docker GPG key"
+    # Remove any old Docker packages
+    log_info "Removing old Docker packages..."
+    sudo apt remove -y docker docker-engine docker.io containerd runc 2>/dev/null || true
+
+    # Add Docker's official GPG key
+    log_info "Adding Docker GPG key..."
+    sudo mkdir -p /etc/apt/keyrings
+    if ! curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg; then
+      log_error "Failed to add Docker GPG key"
+      exit 1
+    fi
+
+    # Set up the Docker repository
+    log_info "Setting up Docker repository..."
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
+
+    # Update package index
+    log_info "Updating package index for Docker..."
+    if ! sudo apt update; then
+      log_error "Failed to update package index after adding Docker repository"
+      exit 1
+    fi
+
+    # Install Docker CE
+    log_info "Installing Docker CE packages..."
+    if ! sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
+      log_error "Failed to install Docker CE packages"
+      exit 1
+    fi
+    ;;
+
+  pacman)
+    log_info "Detected Arch based system"
+
+    log_info "Installing Docker on Arch based distribution ..."
+    if ! sudo pacman -Sy docker --noconfirm; then
+      log_error "Failed to install Docker "
+      exit 1
+    fi
+    ;;
+  *)
+    log_error "Unsupported package manager: $packman"
     exit 1
-  fi
-
-  # Set up the Docker repository
-  log_info "Setting up Docker repository..."
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | sudo tee /etc/apt/sources.list.d/docker.list >/dev/null
-
-  # Update package index
-  log_info "Updating package index for Docker..."
-  if ! sudo apt update; then
-    log_error "Failed to update package index after adding Docker repository"
-    exit 1
-  fi
-
-  # Install Docker CE
-  log_info "Installing Docker CE packages..."
-  if ! sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin; then
-    log_error "Failed to install Docker CE packages"
-    exit 1
-  fi
+    ;;
+  esac
 
   # Add current user to docker group
   if ! groups "$USER" | grep -q docker; then
@@ -133,16 +170,27 @@ install_docker_ce() {
   fi
 }
 
-# Install packages by category
-install_packages "core build tools" "${CORE_DEPS[@]}"
-install_packages "Asterisk libraries" "${ASTERISK_DEPS[@]}"
-install_packages "media processing tools" "${MEDIA_DEPS[@]}"
-install_packages "Python environment" "${PYTHON_DEPS[@]}"
+dependencies_main() {
+  echo "$packman"
 
-# Install Docker CE
-#install_docker_ce
-if ! command -v docker >/dev/null; then
-  install_docker_ce
-fi
+  update_pkg_lists
+  # Install packages by category
+  # TODO: Comments temporarily and leave the dependencies handle by the script provide by Asterisk
+  #
+  # install_packages "core build tools" "${CORE_DEPS[@]}"
+  # install_packages "Asterisk libraries" "${ASTERISK_DEPS[@]}"
+  # install_packages "media processing tools" "${MEDIA_DEPS[@]}"
+  # install_packages "Python environment" "${PYTHON_DEPS[@]}"
 
-log_success "All dependencies installed successfully!"
+  # Install Docker CE
+  #install_docker_ce
+  if ! command -v docker >/dev/null; then
+    install_docker_ce "$packman"
+  fi
+
+  log_success "All dependencies installed successfully!"
+
+}
+
+# function call section
+dependencies_main
