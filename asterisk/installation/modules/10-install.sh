@@ -194,6 +194,7 @@ install_main() {
 
   case $packman in
   pacman)
+    ASTERISK_DIR=$(sudo find /usr/src -name "asterisk-*" -type d | head -n1)
     log_info "Installing init scripts for Arch based and systemd... "
     log_info "ASTERISK_DIR : $ASTERISK_DIR"
     SYSTEMD_CONF_DIR="$ASTERISK_DIR/contrib/systemd"
