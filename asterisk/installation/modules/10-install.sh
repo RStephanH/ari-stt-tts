@@ -195,13 +195,18 @@ install_main() {
   case $packman in
   pacman)
     log_info "Installing init scripts for Arch based and systemd... "
+    log_info "ASTERISK_DIR : $ASTERISK_DIR"
     SYSTEMD_CONF_DIR="$ASTERISK_DIR/contrib/systemd"
+    log_info "SYSTEMD_CONF_DIR : $SYSTEMD_CONF_DIR"
     if [[ -d "$SYSTEMD_CONF_DIR" ]]; then
       log_success "Systemd directory found"
       cd "$SYSTEMD_CONF_DIR" && ls -A
 
       if command -v rsync; then
-        if ! sudo rsync "$SYSTEMD_CONF_DIR/*" --exclude="README.txt" /etc/systemd/system/; then
+        if ! sudo rsync -av \
+          --exclude="README.txt" \
+          "$SYSTEMD_CONF_DIR"/* \
+          /etc/systemd/system/; then
           log_error "Failed to copy systemd files"
           exit 1
         fi
