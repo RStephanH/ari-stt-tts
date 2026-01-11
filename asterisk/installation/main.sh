@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Asterisk Installation Main Entry Script with Enhanced Error Tracking
-# Usage: ./install_asterisk.sh [options]
+# Usage: ./main.sh [options]
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 MODULES_DIR="$SCRIPT_DIR/modules"
