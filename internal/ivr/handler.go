@@ -99,7 +99,7 @@ func callHandl(mainCtx context.Context,
 
 		default:
 			DTMFHandl(mainCtx,
-				"sound:after_recording",
+				"sound:after_responding",
 				client,
 				h,
 				thirdRecord(recFilename, resFilename, &recResBody, &speakResBody, h),
