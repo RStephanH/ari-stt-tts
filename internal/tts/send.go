@@ -2,14 +2,11 @@ package tts
 
 import (
 	"context"
-	// "io"
-	// "os"
 
 	"github.com/charmbracelet/log"
 	apiClient "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest"
 	client "github.com/deepgram/deepgram-go-sdk/pkg/client/speak/v1/rest"
 
-	// interfaces "github.com/deepgram/deepgram-go-sdk/v3/pkg/client/interfaces"
 	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
 	interfaces "github.com/deepgram/deepgram-go-sdk/pkg/client/interfaces/v1"
 )
