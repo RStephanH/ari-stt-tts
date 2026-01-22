@@ -1,3 +1,13 @@
+# ⚠️ This Repository is No Longer Maintained
+
+This project is no longer actively maintained and has been deprecated.
+
+Please visit the new version of this project:
+
+**👉 [New Repository](https://github.com/RStephanH/FRED)**
+
+Thank you for your interest and support!
+
 # 📞 **ari-stt-tts**
 
 A complete IVR (Interactive Voice Response) workflow built with **Go**, **Asterisk ARI**, **Deepgram (STT + TTS)**, and **Google Gemini (LLM)**.
