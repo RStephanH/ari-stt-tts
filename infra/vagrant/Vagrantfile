@@ -1,0 +1,148 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+# Vagrant Configuration for ari-stt-tts Infrastructure
+# 
+# This Vagrantfile defines a complete development environment for the
+# IVR (Interactive Voice Response) system with:
+# - Ubuntu 22.04 LTS
+# - Asterisk PBX with ARI enabled
+# - Docker & Docker Compose
+# - Shared volume for application code
+#
+# Usage:
+#   vagrant up          # Create and provision the VM
+#   vagrant ssh         # Connect to VM
+#   vagrant provision   # Re-run provisioning scripts
+#   vagrant destroy     # Destroy the VM
+
+Vagrant.configure("2") do |config|
+  # ============================================================================
+  # VM Configuration
+  # ============================================================================
+  
+  config.vm.box = "ubuntu/jammy64"
+  config.vm.box_version = ">= 20240101.0.0"
+  
+  # VM hostname
+  config.vm.hostname = "pbx-server"
+  
+  # ============================================================================
+  # Network Configuration
+  # ============================================================================
+  
+  # Asterisk ARI Interface (port 8088)
+  config.vm.network "forwarded_port", guest: 8088, host: 8088,
+    auto_correct: true,
+    comment: "Asterisk ARI Interface"
+  
+  # Go IVR Application (port 4002)
+  config.vm.network "forwarded_port", guest: 4002, host: 4002,
+    auto_correct: true,
+    comment: "Go IVR Application"
+
+  # SIP (PJSIP) default signaling port (UDP 5060)
+  config.vm.network "forwarded_port", guest: 5060, host: 5060,
+    auto_correct: true,
+    protocol: "udp",
+    comment: "SIP (PJSIP) Signaling"
+  
+  # Private network for better isolation
+  config.vm.network "private_network", type: "dhcp",
+    comment: "Private network for Vagrant VM"
+  
+  # ============================================================================
+  # File Synchronization
+  # ============================================================================
+  
+  # Sync entire project to /vagrant in the VM
+  config.vm.synced_folder ".", "/vagrant",
+    type: "virtualbox",
+    create: true,
+    owner: "vagrant",
+    group: "vagrant",
+    mount_options: ["dmode=755,fmode=644"]
+  
+  # ============================================================================
+  # Provider Configuration (VirtualBox)
+  # ============================================================================
+  
+  config.vm.provider "virtualbox" do |vb|
+    vb.name = "pbx-server"
+    vb.memory = 2048      # 2GB RAM (increase if compilation is slow)
+    vb.cpus = 2           # 2 CPU cores
+    vb.gui = false        # Headless mode
+    
+    # Enable clipboard for convenience (optional)
+    vb.customize ["modifyvm", :id, "--clipboard-mode", "bidirectional"]
+    
+    # Enable audio for future features (optional)
+    vb.customize ["modifyvm", :id, "--audio", "none"]
+  end
+  
+  # ============================================================================
+  # Provisioning
+  # ============================================================================
+  
+  # Main provisioning script: bootstrap.sh
+  # This script sources other provisioning scripts in the correct order
+  config.vm.provision "shell" do |s|
+    s.path = "provisioning/bootstrap.sh"
+    s.privileged = true
+    s.keep_color = true
+    s.args = []
+    s.env = {
+      "VAGRANT_ENVIRONMENT" => "true",
+      "ARI_USERNAME" => ENV.fetch("ARI_USERNAME", ""),
+      "ARI_PASSWORD" => ENV.fetch("ARI_PASSWORD", ""),
+      "ARI_APPLICATION" => ENV.fetch("ARI_APPLICATION", ""),
+      "HTTP_BIND_ADDR" => ENV.fetch("HTTP_BIND_ADDR", ""),
+      "HTTP_BIND_PORT" => ENV.fetch("HTTP_BIND_PORT", ""),
+      "PJSIP_ENDPOINT_ID" => ENV.fetch("PJSIP_ENDPOINT_ID", ""),
+      "PJSIP_PASSWORD" => ENV.fetch("PJSIP_PASSWORD", ""),
+      "COPY_ASSETS" => ENV.fetch("COPY_ASSETS", ""),
+      "ASSETS_DIR" => ENV.fetch("ASSETS_DIR", "")
+    }
+  end
+  
+  # ============================================================================
+  # Post-Provisioning Message
+  # ============================================================================
+  
+  config.vm.post_up_message = <<-SHELL
+    
+    ================================================================================
+                    🎉 ari-stt-tts Infrastructure Ready
+    ================================================================================
+    
+    ✅ VM Created: ari-stt-tts
+    ✅ Ubuntu 22.04 LTS
+    ✅ Asterisk PBX installed and configured
+    ✅ Docker & Docker Compose installed
+    ✅ ARI enabled and listening on port 8088
+    
+    📡 Network Access:
+       • Asterisk ARI:     http://localhost:8088/ari
+       • Go Application:   http://localhost:4002
+       • SIP (PJSIP):      udp://localhost:5060
+       • SSH:              vagrant ssh
+    
+    🚀 Next Steps:
+       1. SSH into VM:     vagrant ssh
+       2. Check Asterisk:  systemctl status asterisk
+       3. Deploy app:      cd /vagrant && docker-compose up
+    
+    📖 Documentation:
+       • Setup Guide:      infra/README.md
+       • Implementation:   docs/IMPLEMENTATION_GUIDE.md
+       • File Mapping:     docs/FILE_MAPPING.md
+    
+    ⚠️  Log Files:
+       • Provisioning:     /tmp/asterisk-provision-*.log
+       • Asterisk:         /var/log/asterisk/
+    
+    ================================================================================
+    
+  SHELL
+  
+end
