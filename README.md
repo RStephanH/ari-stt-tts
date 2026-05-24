@@ -110,6 +110,16 @@ Shared directory example:
 
 ---
 
+# 🧱 **Infrastructure (Vagrant)**
+
+If you want a fully automated PBX VM, use the Vagrant-based IaC setup:
+
+* **Guide:** `infra/README.md`
+* Installs **Ubuntu 22.04 + Asterisk 22**
+* Enables **ARI** and creates a basic **PJSIP** endpoint + test dialplan
+
+---
+
 # ⚙️ **Environment Variables**
 
 Create a `.env` file in the project root:
