@@ -1,3 +1,4 @@
 CRUSH.md
 test/
+*.vagrant/*
 
