@@ -1,4 +1,5 @@
 CRUSH.md
 test/
 .vagrant/
+*.log
 
