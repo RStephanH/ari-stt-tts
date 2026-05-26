@@ -2,4 +2,5 @@ CRUSH.md
 test/
 .vagrant/
 *.log
+.env
 
