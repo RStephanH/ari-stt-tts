@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-
 ################################################################################
 # System Dependencies Installation Script
 ################################################################################
@@ -174,7 +173,8 @@ install_docker_ce() {
 
   # Set up Docker repository
   log_info "Setting up Docker repository..."
-  local distro_codename=$(lsb_release -cs)
+  local distro_codename
+  distro_codename=$(lsb_release -cs)
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $distro_codename stable" |
     tee /etc/apt/sources.list.d/docker.list >/dev/null
 
@@ -281,11 +281,11 @@ verify_installations() {
 
   # Check essential build tools
   for tool in gcc make git curl wget; do
-    if ! command -v $tool &>/dev/null; then
+    if ! command -v "$tool" &>/dev/null; then
       log_error "Required tool not found: $tool"
       success=false
     else
-      log_info "✓ $tool: $($tool --version 2>&1 | head -n1)"
+      log_info "✓ $tool: $("$tool" --version 2>&1 | head -n1)"
     fi
   done
 

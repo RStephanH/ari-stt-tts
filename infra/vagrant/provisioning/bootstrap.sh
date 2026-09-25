@@ -45,19 +45,30 @@ if [[ "$VAGRANT_ENV" == "true" ]]; then
 fi
 
 ASTERISK_DIR="$PROVISIONING_DIR/asterisk"
+NETWORK_DIR="$PROVISIONING_DIR/network"
 
 # Logging
 LOG_DIR="/tmp"
 LOG_FILE="$LOG_DIR/asterisk-provision-$(date +%Y%m%d-%H%M%S).log"
 
 # Colors for output (disabled if not a TTY)
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-NC='\033[0m' # No Color
+if [[ -t 2 ]]; then
+  RED='\033[0;31m'
+  GREEN='\033[0;32m'
+  YELLOW='\033[1;33m'
+  BLUE='\033[0;34m'
+  CYAN='\033[0;36m'
+  MAGENTA='\033[0;35m'
+  NC='\033[0m' # No Color
+else
+  RED=''
+  GREEN=''
+  YELLOW=''
+  BLUE=''
+  CYAN=''
+  MAGENTA=''
+  NC=''
+fi
 
 # Tracking
 SCRIPTS_RUN=()
@@ -149,6 +160,32 @@ check_vagrant_environment() {
   log_info "Running with root privileges"
 }
 
+check_required_env_vars() {
+  log_step "Validating required environment variables..."
+
+  local required_vars=(
+    "ARI_USERNAME"
+    "ARI_PASSWORD"
+    "ARI_APPLICATION_NAME"
+    "TAILSCALE_AUTHKEY"
+  )
+  local missing=()
+
+  for var in "${required_vars[@]}"; do
+    if [[ -z "${!var:-}" ]]; then
+      missing+=("$var")
+    fi
+  done
+
+  if [[ ${#missing[@]} -gt 0 ]]; then
+    log_error "Missing required environment variables: ${missing[*]}"
+    log_error "Make sure these are exported in your host shell before 'vagrant up' (e.g. source .env)"
+    exit 2
+  fi
+
+  log_success "All required environment variables are set"
+}
+
 check_prerequisites() {
   log_step "Checking prerequisites..."
   
@@ -162,6 +199,7 @@ check_prerequisites() {
   # Check if provisioning scripts exist
   local required_scripts=(
     "$PROVISIONING_DIR/dependencies.sh"
+    "$NETWORK_DIR/tailscale.sh"
     "$ASTERISK_DIR/install.sh"
     "$ASTERISK_DIR/configure.sh"
   )
@@ -296,11 +334,13 @@ print_next_steps() {
   echo -e "${CYAN}Next Steps:${NC}"
   echo "  1. SSH into VM: vagrant ssh"
   echo "  2. Check Asterisk: systemctl status asterisk"
-  echo "  3. Deploy application: cd /vagrant && docker compose up --build"
+  echo "  3. Check Tailscale: tailscale status"
+  echo "  4. Deploy application: cd /vagrant && docker compose up --build"
   echo ""
   echo -e "${CYAN}Useful Commands:${NC}"
   echo "  • Asterisk CLI: sudo asterisk -r"
   echo "  • Check logs: tail -f /var/log/asterisk/messages"
+  echo "  • Tailscale IP: tailscale ip -4"
   echo "  • Re-provision: vagrant provision"
   echo ""
 }
@@ -314,6 +354,7 @@ main() {
   
   # Phase 1: Validation
   check_vagrant_environment
+  check_required_env_vars
   setup_logging
   check_prerequisites
   
@@ -325,6 +366,10 @@ main() {
   run_provisioning_script \
     "System Dependencies" \
     "$PROVISIONING_DIR/dependencies.sh"
+  
+  run_provisioning_script \
+    "Tailscale Network Join" \
+    "$NETWORK_DIR/tailscale.sh"
   
   run_provisioning_script \
     "Asterisk Installation" \

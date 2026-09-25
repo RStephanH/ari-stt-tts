@@ -3,8 +3,13 @@ services:
     build: .
     image: ivr-server:mvp
     ports:
-      - 4002:4002
-    volumes: 
+      - "4002:4002"
+    volumes:
       - /var/spool/asterisk/recording:/mnt/tts
     env_file:
         - .env
+    environment:
+      - ARI_URL=http://host.docker.internal:8088/ari
+      - ARI_WS_URL=ws://host.docker.internal:8088/ari/events
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
