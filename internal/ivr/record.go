@@ -5,44 +5,41 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"time"
+
+	"ari/internal/ariutil"
 
 	"github.com/CyCoreSystems/ari/v5"
 	"github.com/charmbracelet/log"
-	apiPrerecordedInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/prerecorded/v1/interfaces"
-	apiSpeakResponseInterfaces "github.com/deepgram/deepgram-go-sdk/pkg/api/speak/v1/rest/interfaces"
 )
 
 func RecordingRequest(filename string) ChannelHandler {
 	return func(ctx context.Context, ch *ari.ChannelHandle) error {
-		// The default directory for recordings is /var/spool/asterisk/recording/
-
-		rec, err := ch.Record(filename, &ari.RecordingOptions{
-			Format:      "wav",
-			MaxDuration: 120 * time.Second,
-			MaxSilence:  5 * time.Second,
-			Exists:      "overwrite",
-			Beep:        true,
-			Terminate:   "#"},
+		rec, err := ch.Record(
+			filename, &ari.RecordingOptions{
+				Format:      "wav",
+				MaxDuration: 120 * time.Second,
+				MaxSilence:  5 * time.Second,
+				Exists:      "overwrite",
+				Beep:        true,
+				Terminate:   "#",
+			},
 		)
+		if err != nil {
+			log.Errorf("Failed to start recording: %v", err)
+			return err
+		}
 
 		go func() {
 			<-ctx.Done()
 			rec.Stop()
 			log.Info("Context cancelled, recording stopped.", "filename", filename)
-
 		}()
 
-		if err != nil {
-			log.Errorf("Failed to start recording: %v", err)
-			return err
-		}
 		log.Info("Started recording", "filename", filename)
 		chanRec := rec.Subscribe("RecordingFinished")
 		<-chanRec.Events()
 		log.Info("Recording finished", "filename", filename)
-		log.Info("The program should stop now!")
 		return nil
 	}
 }
@@ -52,20 +49,20 @@ func ListentRecording(filename string) ChannelHandler {
 		log.Info("Playing recording", "filename", filename)
 		mediaURI := fmt.Sprintf("recording:%s", filename)
 		_, err := promptSound(ctx, ch, mediaURI, []string{"#"}, 1)
-
 		return err
 	}
 }
 
-func downloadRecordingFromARI(ctx context.Context, recordingName string) ([]byte, error) {
-	url := fmt.Sprintf("%s/recordings/stored/%s/file", os.Getenv("ARI_URL"), recordingName)
+func downloadRecordingFromARI(ctx context.Context, cfg ariutil.Config, recordingName string) ([]byte, error) {
+	url := fmt.Sprintf("%s/recordings/stored/%s/file", cfg.URL, recordingName)
 	log.Info("GET the ressource", "URL", url)
-	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
-	req.SetBasicAuth(os.Getenv("ARI_USERNAME"), os.Getenv("ARI_PASSWORD"))
+	req.SetBasicAuth(cfg.Username, cfg.Password)
+
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -74,44 +71,33 @@ func downloadRecordingFromARI(ctx context.Context, recordingName string) ([]byte
 	defer resp.Body.Close()
 
 	return io.ReadAll(resp.Body)
-
 }
 
-func firstRecord(filename string) map[string]ChannelHandler {
+func firstRecord(s *CallSession) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
-		"1":       RecordingRequest(filename),
+		"1":       RecordingRequest(s.RecFilename),
 		"0":       StopCall,
 		"default": DoNothing,
 	}
 }
 
-func secondRecord(filename string,
-	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
-	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
-	h *ari.ChannelHandle) map[string]ChannelHandler {
-
+func secondRecord(s *CallSession) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
-		"1":       RecordingRequest(filename),
-		"2":       ListentRecording(filename),
-		"3":       ValidateSend(filename, recResBody, speakResBody, h),
+		"1":       RecordingRequest(s.RecFilename),
+		"2":       ListentRecording(s.RecFilename),
+		"3":       s.validateAndRespondHandler(),
 		"0":       StopCall,
 		"default": DoNothing,
 	}
-
 }
 
-func thirdRecord(filename string, filenameRes string,
-	recResBody *apiPrerecordedInterfaces.PreRecordedResponse,
-	speakResBody *apiSpeakResponseInterfaces.SpeakResponse,
-	h *ari.ChannelHandle) map[string]ChannelHandler {
-
+func thirdRecord(s *CallSession) map[string]ChannelHandler {
 	return map[string]ChannelHandler{
-		"1":       RecordingRequest(filename),
-		"2":       ListentRecording(filename),
-		"3":       ValidateSend(filename, recResBody, speakResBody, h),
-		"4":       ListentRecording(filenameRes),
+		"1":       RecordingRequest(s.RecFilename),
+		"2":       ListentRecording(s.RecFilename),
+		"3":       s.validateAndRespondHandler(),
+		"4":       ListentRecording(s.ResFilename),
 		"0":       StopCall,
 		"default": DoNothing,
 	}
-
 }
