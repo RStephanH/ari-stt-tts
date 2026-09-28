@@ -109,6 +109,25 @@ install_prerequisites() {
   fi
 }
 
+verify_asterisk_installation() {
+  log_info "Verifying Asterisk installation..."
+
+  if ! command -v asterisk >/dev/null 2>&1; then
+    log_error "asterisk binary not found in PATH after install"
+    exit 1
+  fi
+
+  local version
+  version=$(asterisk -V)
+  log_success "✓ Asterisk installed: $version"
+
+  if ! systemctl cat asterisk.service >/dev/null 2>&1; then
+    log_error "asterisk.service not found by systemd — 'make config' may have failed"
+    exit 1
+  fi
+  log_success "✓ systemd service file present"
+}
+
 install_asterisk() {
   local package_manager
   package_manager=$(detect_os)
@@ -185,23 +204,6 @@ install_asterisk() {
     exit 1
   fi
 
-  # if [[ "${SKIP_MENUSELECT:-false}" != "true" ]]; then
-  #   echo ""
-  #   echo "📋 MENUSELECT INSTRUCTIONS:"
-  #   echo "   • Use arrow keys to navigate"
-  #   echo "   • Press ENTER to enter a category"
-  #   echo "   • Press SPACE to enable/disable modules"
-  #   echo "   • Press 'x' to exit a category"
-  #   echo "   • Press 'q' to quit and save"
-  #   echo ""
-  #   if ! make menuselect; then
-  #     log_error "Menuselect failed or was cancelled"
-  #     exit 1
-  #   fi
-  # else
-  #   log_warning "Skipping menuselect (SKIP_MENUSELECT=true)"
-  # fi
-
   log_info "Asterisk Module Selection (Automated)"
 
   # 1. Generate the initial makeopts file
@@ -241,17 +243,9 @@ install_asterisk() {
   ./menuselect/menuselect --enable CORE-SOUNDS-EN-WAV menuselect.makeopts
   ./menuselect/menuselect --enable MOH-OPSOUND-WAV menuselect.makeopts
 
-  # 4. Optional: Disable obsolete modules to optimize the build
-
   log_success "Module selection completed automatically."
 
-  # 5. Compilation
-  log_info "Compiling Asterisk using $(nproc) CPU cores..."
-  if ! make -j"$(nproc)"; then
-    log_error "Failed to compile Asterisk"
-    exit 1
-  fi
-
+  # 4. Compilation
   log_info "Compiling Asterisk using $(nproc) CPU cores..."
   if ! make -j"$(nproc)"; then
     log_error "Failed to compile Asterisk"
@@ -290,6 +284,8 @@ install_asterisk() {
 
   log_info "Cleaning up build artifacts..."
   rm -rf "$build_dir/asterisk-${asterisk_version}.tar.gz"
+
+  verify_asterisk_installation
 
   log_success "Asterisk installation completed!"
 }

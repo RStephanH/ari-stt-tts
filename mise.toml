@@ -1,0 +1,18 @@
+[tools]
+go = "1.25.3"
+
+[tasks.stt-fixture]
+run = "bash scripts/gen-stt-fixture.sh"
+description = "Regenerate the STT test audio fixture (run manually when the test phrase changes)"
+
+[tasks.test-stt]
+run = "bash scripts/test-stt-integration.sh"
+description = "Run the Deepgram STT integration test"
+
+[tasks.test-unit]
+run = "go test -short ./..."
+description = "Run all fast unit tests across the project (no network, no external dependencies)"
+
+[tasks.test-ariutil]
+run = "bash scripts/test-ariutil-integration.sh"
+description = "Run the ARI client integration test (requires Asterisk reachable, e.g. via Vagrant)"

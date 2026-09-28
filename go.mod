@@ -7,6 +7,8 @@ require (
 	github.com/charmbracelet/log v0.4.2
 	github.com/deepgram/deepgram-go-sdk v1.9.0
 	github.com/deepgram/deepgram-go-sdk/v3 v3.5.0
+	github.com/pion/rtp v1.8.25
+	google.golang.org/genai v1.36.0
 )
 
 require (
@@ -40,10 +42,8 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/oklog/ulid v1.3.1 // indirect
 	github.com/pion/randutil v0.1.0 // indirect
-	github.com/pion/rtp v1.8.25 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
 	github.com/rotisserie/eris v0.4.1 // indirect
-	github.com/stretchr/objx v0.5.0 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	go.opencensus.io v0.24.0 // indirect
 	golang.org/x/crypto v0.36.0 // indirect
@@ -51,7 +51,6 @@ require (
 	golang.org/x/net v0.38.0 // indirect
 	golang.org/x/sys v0.31.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
-	google.golang.org/genai v1.36.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240903143218-8af14fe29dc1 // indirect
 	google.golang.org/grpc v1.66.2 // indirect
 	google.golang.org/protobuf v1.34.2 // indirect

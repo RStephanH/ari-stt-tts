@@ -1,3 +1,4 @@
+// dtmf.go
 package ivr
 
 import (
@@ -8,61 +9,53 @@ import (
 	"github.com/charmbracelet/log"
 )
 
+// DTMFHandl plays sound and waits for a DTMF digit, then runs the matching
+// action from actions ('#' falls back to actions["default"]; silence
+// re-prompts). It returns the error from playback/prompting or from the
+// executed action, so callers can tell whether the step succeeded.
 func DTMFHandl(mainCtx context.Context,
-	sound string, client ari.Client,
+	sound string,
 	ch *ari.ChannelHandle,
 	actions map[string]ChannelHandler,
 	listDigOpt []string,
-) {
-
-	sub := client.Bus().Subscribe(nil, "RecordingFinished")
-	defer sub.Cancel()
-	//
-	// }()
-
+) error {
 	for {
 		select {
-
 		case <-mainCtx.Done():
-			return
+			return mainCtx.Err()
 		default:
-
-			if res, er := promptSound(mainCtx, ch, sound, listDigOpt, 3); er == nil {
-
-				if action, ok := actions[res.DTMF]; ok {
-					if err := action(mainCtx, ch); err != nil {
-						log.Error("Error executing action for DTMF digit", "Digit", res.DTMF, "Error", err)
-					}
-					if res.DTMF == "1" {
-						for evts := range sub.Events() {
-							if evt, ok := evts.(*ari.RecordingFinished); ok {
-								log.Infof("Recording finished: %s", evt.Recording.Name)
-								log.Info("Should switch on another function")
-								return
-							}
-
-						}
-					} else {
-						log.Info("Action terminated")
-						return
-					}
-				} else if res.DTMF == "#" {
-					actions["default"](mainCtx, ch)
-
-				} else if res.DTMF == "" {
-					time.Sleep(100 * time.Millisecond)
-					continue
-
-				} else {
-					log.Warn("No action defined for this DTMF digit", "Digit", res.DTMF)
-				}
-
-				// }
-			} else {
-				log.Error("Error during prompt sound", "Error", er)
-				return
-			}
 		}
 
+		res, err := promptSound(mainCtx, ch, sound, listDigOpt, 3)
+		if err != nil {
+			log.Error("Error during prompt sound", "Error", err)
+			return err
+		}
+
+		switch res.DTMF {
+		case "":
+			time.Sleep(100 * time.Millisecond)
+			continue
+
+		case "#":
+			action, ok := actions["default"]
+			if !ok {
+				log.Warn("No 'default' action defined for '#'")
+				return nil
+			}
+			return action(mainCtx, ch)
+
+		default:
+			action, ok := actions[res.DTMF]
+			if !ok {
+				log.Warn("No action defined for this DTMF digit", "Digit", res.DTMF)
+				continue
+			}
+			if err := action(mainCtx, ch); err != nil {
+				log.Error("Error executing action for DTMF digit", "Digit", res.DTMF, "Error", err)
+				return err
+			}
+			return nil
+		}
 	}
 }

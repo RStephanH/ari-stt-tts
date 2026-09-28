@@ -13,13 +13,20 @@ set -euo pipefail
 #   - LOG_FILE:          Path to provisioning log file (optional)
 #   - ARI_USERNAME:      ARI user (default: ariuser)
 #   - ARI_PASSWORD:      ARI password (default: aripass)
-#   - ARI_APPLICATION:   ARI Stasis app name (default: ari-stt-tts)
+#   - ARI_APPLICATION_NAME:   ARI Stasis app name (default: ari-stt-tts)
 #   - HTTP_BIND_ADDR:    HTTP bind address (default: 0.0.0.0)
 #   - HTTP_BIND_PORT:    HTTP bind port (default: 8088)
 #   - PJSIP_ENDPOINT_ID: SIP endpoint ID (default: 1001)
 #   - PJSIP_PASSWORD:    SIP endpoint password (default: 1001pass)
 #   - COPY_ASSETS:       Copy WAV assets to Asterisk sounds (default: true)
 #   - ASSETS_DIR:        Assets directory (default: /vagrant/assets)
+#
+# NAT / Tailscale:
+#   If the `tailscale` CLI is present and joined to a tailnet, this script
+#   detects the VM's Tailscale IPv4 address and configures PJSIP's
+#   external_media_address / external_signaling_address so that SIP clients
+#   connecting over the tailnet get working two-way audio (not just
+#   signaling). Requires provisioning/network/tailscale.sh to have run first.
 #
 ################################################################################
 
@@ -73,7 +80,7 @@ ASTERISK_GROUP="${ASTERISK_GROUP:-asterisk}"
 
 ARI_USERNAME="${ARI_USERNAME:-ariuser}"
 ARI_PASSWORD="${ARI_PASSWORD:-aripass}"
-ARI_APPLICATION="${ARI_APPLICATION:-ari-stt-tts}"
+ARI_APPLICATION_NAME="${ARI_APPLICATION_NAME:-ari-stt-tts}"
 
 HTTP_BIND_ADDR="${HTTP_BIND_ADDR:-0.0.0.0}"
 HTTP_BIND_PORT="${HTTP_BIND_PORT:-8088}"
@@ -82,7 +89,7 @@ PJSIP_ENDPOINT_ID="${PJSIP_ENDPOINT_ID:-1001}"
 PJSIP_PASSWORD="${PJSIP_PASSWORD:-1001pass}"
 
 COPY_ASSETS="${COPY_ASSETS:-true}"
-ASSETS_DIR="${ASSETS_DIR:-/vagrant/assets}"
+ASSETS_DIR="${ASSETS_DIR:-/vagrant/infra/vagrant/assets}"
 
 # ============================================================================
 # Helpers
@@ -114,6 +121,16 @@ ensure_asterisk_dirs() {
     log_error "Asterisk config directory not found: $ASTERISK_ETC_DIR"
     exit 1
   fi
+}
+
+detect_tailscale_ip() {
+  if ! command -v tailscale &>/dev/null; then
+    echo ""
+    return 0
+  fi
+  local ip
+  ip=$(tailscale ip -4 2>/dev/null || true)
+  echo "$ip"
 }
 
 # ============================================================================
@@ -149,12 +166,22 @@ EOF
 }
 
 write_pjsip_conf() {
+  local nat_lines=""
+  if [[ -n "$TAILSCALE_IP" ]]; then
+    log_info "Tailscale IP detected ($TAILSCALE_IP) — configuring PJSIP transport for tailnet NAT"
+    nat_lines="external_media_address=${TAILSCALE_IP}
+external_signaling_address=${TAILSCALE_IP}"
+  else
+    log_warning "No Tailscale IP detected — external_media_address/external_signaling_address not set (audio may fail for remote softphones)"
+  fi
+
   write_config "$ASTERISK_ETC_DIR/pjsip.conf" "$(
     cat <<EOF
 [transport-udp]
 type=transport
 protocol=udp
 bind=0.0.0.0
+${nat_lines}
 
 [${PJSIP_ENDPOINT_ID}]
 type=endpoint
@@ -190,8 +217,8 @@ exten => ${PJSIP_ENDPOINT_ID},1,NoOp(Test extension ${PJSIP_ENDPOINT_ID})
  same => n,Playback(hello-world)
  same => n,Hangup()
 
-exten => 6001,1,NoOp(Enter ARI app ${ARI_APPLICATION})
- same => n,Stasis(${ARI_APPLICATION})
+exten => 6001,1,NoOp(Enter ARI app ${ARI_APPLICATION_NAME})
+ same => n,Stasis(${ARI_APPLICATION_NAME})
  same => n,Hangup()
 EOF
   )"
@@ -266,6 +293,8 @@ restart_asterisk() {
 main() {
   log_info "Configuring Asterisk (ARI/HTTP/PJSIP/extensions/logger)"
   ensure_asterisk_dirs
+
+  TAILSCALE_IP="$(detect_tailscale_ip)"
 
   write_ari_conf
   write_http_conf

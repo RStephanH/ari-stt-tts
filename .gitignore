@@ -3,3 +3,4 @@ test/
 .vagrant/
 *.log
 
+.env
