@@ -89,7 +89,7 @@ PJSIP_ENDPOINT_ID="${PJSIP_ENDPOINT_ID:-1001}"
 PJSIP_PASSWORD="${PJSIP_PASSWORD:-1001pass}"
 
 COPY_ASSETS="${COPY_ASSETS:-true}"
-ASSETS_DIR="${ASSETS_DIR:-/vagrant/assets}"
+ASSETS_DIR="${ASSETS_DIR:-/vagrant/infra/vagrant/assets}"
 
 # ============================================================================
 # Helpers

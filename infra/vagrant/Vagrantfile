@@ -102,7 +102,7 @@ config.vm.synced_folder "../..", "/vagrant",
       "PJSIP_ENDPOINT_ID" => ENV.fetch("PJSIP_ENDPOINT_ID", ""),
       "PJSIP_PASSWORD" => ENV.fetch("PJSIP_PASSWORD", ""),
       "COPY_ASSETS" => ENV.fetch("COPY_ASSETS", ""),
-      "ASSETS_DIR" => ENV.fetch("ASSETS_DIR", ""),
+      "ASSETS_DIR" => ENV.fetch("ASSETS_DIR", "/vagrant/infra/vagrant/assets"),
       "TAILSCALE_AUTHKEY" => ENV.fetch("TAILSCALE_AUTHKEY", ""),
       "TAILSCALE_HOSTNAME" => ENV.fetch("TAILSCALE_HOSTNAME", "pbx-server")
     }
