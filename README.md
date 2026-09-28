@@ -1,25 +1,15 @@
-# ⚠️ This Repository is No Longer Maintained
-
-This project is no longer actively maintained and has been deprecated.
-
-Please visit the new version of this project:
-
-**👉 [New Repository](https://github.com/RStephanH/FRED)**
-
-Thank you for your interest and support!
-
 # 📞 **ari-stt-tts**
 
 A complete IVR (Interactive Voice Response) workflow built with **Go**, **Asterisk ARI**, **Deepgram (STT + TTS)**, and **Google Gemini (LLM)**.
 This project provides a fully automated conversational IVR system capable of:
 
-* Recording the caller’s request
+* Recording the caller's request
 * Transcribing speech → text
 * Processing intent with Gemini
 * Generating a spoken response via Deepgram TTS
 * Playing the response back to the caller
 
-This repository contains the first working **MVP based on WAV file TTS output**, with future support for **RTP TTS streaming** currently under development.
+This repository contains the first working **MVP based on WAV file TTS output**, with future support for **RTP TTS streaming** currently under development. It also ships a **Vagrant + Tailscale** setup that provisions the PBX VM for you.
 
 ---
 
@@ -41,7 +31,7 @@ This repository contains the first working **MVP based on WAV file TTS output**,
 
 This version uses **file-based TTS** instead of RTP streaming.
 
-* Deepgram generates a **Linear16 WAV file** with **8000 Hz simple rate**
+* Deepgram generates a **Linear16 WAV file** with an **8000 Hz sample rate**
 * The file is saved in a shared directory
 * Asterisk retrieves and plays the file
 * Ensures stability and avoids ARI ExternalMedia issues
@@ -60,19 +50,26 @@ are stored in the **same folder**, which is mounted as a **Docker volume** so bo
 Example (docker-compose):
 
 ```
-/var/spool/asterisk/recordings:/mnt/tts
+/var/spool/asterisk/recording:/mnt/tts
 ```
 
 ---
 
-### ✔ Docker Compose development environment
+### ✔ Reproducible PBX VM (Vagrant + Tailscale)
+
+* Ubuntu 22.04 + Asterisk 22 built from source, with ARI and a basic PJSIP endpoint
+* The VM joins your **Tailscale** tailnet, so SIP softphones and debugging tools can reach it from any device on the tailnet
+* Docker + Docker Compose installed, repository root mounted at `/vagrant`
+
+---
+
+### ✔ Docker Compose environment
 
 The stack includes:
 
-* Go application
-* Shared mounted directory
+* Go application (runs in a container on the VM, next to Asterisk)
+* Shared mounted directory for recordings and TTS files
 * Environment variable injection via `.env`
-* Logs and recordings persisted on the host machine
 
 ---
 
@@ -81,18 +78,16 @@ The stack includes:
 This MVP is based on WAV playback.
 A more advanced version using **RTP streaming through ARI ExternalMedia** is being developed on a separate branch.
 
-Some `.env` variables are already prepared for this but **not yet used**.
-
 ---
 
 # 🏗 **Architecture Overview**
 
 ```
-Caller
+Caller (SIP softphone, e.g. over the tailnet)
    ↓
-Asterisk (Stasis App)
-   ↓ recording
-Go IVR App
+Asterisk (native on the VM, Stasis app)
+   ↓ ARI events + recording
+Go IVR app (Docker container on the same VM)
    ↓ send audio → Deepgram STT
    ↓ text → Gemini LLM
    ↓ LLM output → Deepgram TTS (WAV file)
@@ -103,44 +98,74 @@ Asterisk plays WAV file
 Shared directory example:
 
 ```
-/var/spool/asterisk/recordings
-   ├─ request.wav
-   ├─ request_tts.wav(response of the request)
+/var/spool/asterisk/recording
+   ├─ msg_<channelID>_<timestamp>.wav       (caller recording)
+   ├─ msg_<channelID>_<timestamp>_tts.wav   (TTS response)
 ```
+
+**Code design notes**
+
+* Each incoming call is handled by a `CallSession` (`internal/ivr`) that carries the per-call state and runs the steps in order: transcribe → generate reply → synthesize → play.
+* `internal/stt` exposes its own `TranscriptionResult` / `Transcribe()`, so the rest of the app does not depend on Deepgram's SDK types.
+* `internal/ariutil` builds and validates the ARI connection from a `Config` struct, failing fast when a required variable is missing.
 
 ---
 
 # 📦 **Requirements**
 
-* Docker & Docker Compose
-* Asterisk 22+ (with ARI enabled)
+* Docker & Docker Compose (installed on the VM by the provisioning scripts)
+* Asterisk 22+ with ARI enabled (provisioned by the Vagrant setup below)
+* Vagrant + VirtualBox on the host (for the PBX VM)
+* A Tailscale account and a reusable auth key
 * Deepgram API key
 * Google Gemini API key
 * `.env` file configured (see below)
+* [`mise`](https://mise.jdx.dev/) (optional task runner used for the test tasks)
 
 ---
 
-# 🧱 **Infrastructure (Vagrant)**
+# 🧱 **Infrastructure (Vagrant + Tailscale)**
 
-If you want a fully automated PBX VM, use the Vagrant-based IaC setup:
+**Guide:** `infra/README.md`
 
-* **Guide:** `infra/README.md`
-* Installs **Ubuntu 22.04 + Asterisk 22**
-* Enables **ARI** and creates a basic **PJSIP** endpoint + test dialplan
+The Vagrant setup provisions the PBX VM in this order: system dependencies (+ Docker) → Tailscale join → Asterisk build/install → Asterisk configuration (ARI, HTTP, PJSIP, dialplan, sounds).
+
+Quick start, from the repository root:
+
+```bash
+cp env.example .env                 # then fill in the values
+set -a && source .env && set +a     # Vagrant reads variables from your shell, not from .env
+cd infra/vagrant
+vagrant up
+```
+
+Notes:
+
+* `set -a` must be active **while** sourcing `.env`, otherwise the variables are not exported to the `vagrant` process and provisioning fails on missing variables.
+* Generate a reusable Tailscale auth key at <https://login.tailscale.com/admin/settings/keys> (reusable is handy if you destroy and recreate the VM).
+* Ports 8088 (ARI), 4002 and 5060/udp are also forwarded to `localhost`.
+* The prerecorded prompts in `infra/vagrant/assets/` are copied into Asterisk's sounds directory during provisioning.
+
+### Testing with a SIP softphone
+
+Register a softphone (Zoiper, Linphone, …) against the VM's Tailscale IP (`tailscale ip -4` inside the VM), port 5060/UDP. The softphone device must be on the same tailnet.
+
+* Default dev credentials: `1001` / `1001pass` — override them with `PJSIP_ENDPOINT_ID` and `PJSIP_PASSWORD` before provisioning.
+* Dial the endpoint ID itself (`1001` by default): plays a test prompt, useful to check SIP and audio.
+* Dial `6001`: enters the Stasis app and starts the IVR.
 
 ---
 
 # ⚙️ **Environment Variables**
 
-Create a `.env` file in the project root:
+Create a `.env` file in the project root (start from `env.example`):
 
 ```
 # ------------------------------
-# GENERAL
+# ARI
 # ------------------------------
 ARI_URL=http://localhost:8088/ari
 ARI_WS_URL=ws://localhost:8088/ari/events
-ARI_IP=localhost
 ARI_USERNAME=your_username
 ARI_PASSWORD=your_password
 ARI_APPLICATION_NAME=app_name_stasis
@@ -148,59 +173,76 @@ ARI_APPLICATION_NAME=app_name_stasis
 # ------------------------------
 # DEEPGRAM
 # ------------------------------
-DEEPGRAM_API_KEY=your_key_here
+DEEPGRAM_API_KEY=your_deepgram_api_key
 
 # ------------------------------
 # GEMINI
 # ------------------------------
-GEMINI_API_KEY=your_key_here
+GEMINI_API_KEY=your_gemini_api_key
 
 # ------------------------------
-# RTP MODE (not used in MVP)
+# TAILSCALE (VM provisioning)
 # ------------------------------
-EXTERNAL_HOST_IP=localhost
-EXTERNAL_MEDIA_PORT=4002
-ARI_EXTERNAL_MEDIA_BASE_URL=http://localhost:8088
+TAILSCALE_AUTHKEY=your_tailscale_authkey
+TAILSCALE_HOSTNAME=pbx-server
 ```
 
-⚠ **Note:**
-Some variables (EXTERNAL_HOST_IP,…) are not used in the MVP because the RTP version is still under development.
+⚠ **Notes:**
+
+* `ARI_USERNAME`, `ARI_PASSWORD` and `ARI_APPLICATION_NAME` are used both by the provisioning scripts (written into Asterisk's `ari.conf` and dialplan) and by the Go app, so they must be the same on both sides.
+* `ARI_URL` / `ARI_WS_URL` keep `localhost` in `.env` (host-side runs and integration tests). Inside the container, `docker-compose.yaml` overrides them with `host.docker.internal`, which resolves to the VM through `extra_hosts`.
+* `.env` is git-ignored — never commit it.
 
 ---
 
 # 🐳 **Running with Docker Compose**
 
-### 1. Build & start the stack
+Asterisk runs natively on the VM; the Go app runs in a container next to it. From the host:
 
+```bash
+cd infra/vagrant
+vagrant ssh
 ```
+
+Then inside the VM:
+
+```bash
+cd /vagrant
 docker compose up --build
 ```
 
-### 2. Asterisk automatically
+The Go app then:
 
-* exposes ARI
-* loads your Stasis application
-* interacts with the Go container
-
-### 3. Go app automatically
-
-* waits for ARI events
-* processes audio through STT–LLM–TTS
-* writes WAV files to the shared folder
+* connects to Asterisk's ARI (`host.docker.internal:8088`)
+* waits for Stasis events
+* processes audio through STT → LLM → TTS
+* writes WAV files to the shared folder (`/var/spool/asterisk/recording`, mounted as `/mnt/tts`)
 
 ---
 
 # ▶️ **Usage Flow**
 
-1. Caller enters the Stasis app
-2. System plays the welcome WAV message
-3. Caller records a request
-4. The Go app fetches the recording through ARI
-5. Deepgram transcribes the audio
-6. Gemini generates a response
-7. Deepgram creates a WAV file
-8. Asterisk plays the TTS WAV back to the caller
-9. Caller can continue or end the call
+1. Caller enters the Stasis app (dial `6001`)
+2. System plays the welcome message — `1` record a request, `0` hang up
+3. After recording — `1` re-record, `2` listen back, `3` send the request, `0` hang up
+4. The Go app fetches the recording through ARI, Deepgram transcribes it, Gemini generates a response, Deepgram creates a WAV file (a waiting sound plays meanwhile)
+5. Asterisk plays the TTS WAV back to the caller
+6. Afterwards — `1` new recording, `2` listen to the request, `3` send, `4` replay the response, `0` hang up
+
+---
+
+# 🧪 **Testing**
+
+Tasks are defined in `mise.toml`:
+
+```bash
+mise run test-unit      # fast unit tests, no network (go test -short ./...)
+mise run test-ariutil   # ARI integration test — needs the VM running
+mise run test-stt       # Deepgram integration test — needs DEEPGRAM_API_KEY, consumes API quota
+mise run stt-fixture    # regenerate the STT test audio (needs espeak-ng); only when the test phrase changes
+```
+
+Integration tests are skipped in `-short` mode, and the integration scripts load `.env` automatically.
 
 ---
 
@@ -209,34 +251,36 @@ docker compose up --build
 ```
 ari-stt-tts/
 │
-├── assets/       <-- prerecorded audio message for welcoming (all the audio files in this directory not the directory need to be copied into /var/lib/asterisk/sounds/en of the asterisk server)
+├── docs/                      <-- planning and implementation notes
 │
-├── asterisk/ <--- scripts for the asterisk server
-│   └── installation/
-│                  ├─modules/
-                   └──main.sh
-│
+├── infra/
+│   ├── README.md              <-- infrastructure guide
+│   └── vagrant/
+│       ├── Vagrantfile
+│       ├── assets/            <-- prerecorded prompts, copied into Asterisk's sounds directory (/var/lib/asterisk/sounds/en) during provisioning
+│       └── provisioning/
+│           ├── bootstrap.sh
+│           ├── dependencies.sh
+│           ├── network/       <-- tailscale.sh
+│           └── asterisk/      <-- install.sh, configure.sh
 │
 ├── internal/
-│   ├── ai/ <-- gemini
-│   ├── ariutil/ <-- client web socket of ARI
-│   ├── externalmedia/ <-- about rpt (still in development)
-│   ├── ivr/ <-- ivr handler (call handler, playing sound,etc)
-│   ├── stt/ <-- deepgram STT
-│   └── tts/ <-- deepgram TTS
+│   ├── ai/                    <-- gemini
+│   ├── ariutil/               <-- ARI client (config + connection)
+│   ├── externalmedia/         <-- about rtp (still in development)
+│   ├── ivr/                   <-- call handling (handler, session, dtmf, sound, record)
+│   ├── stt/                   <-- deepgram STT
+│   └── tts/                   <-- deepgram TTS
+│
+├── scripts/                   <-- helper scripts used by the mise test tasks
 │
 ├── Dockerfile
-│
-├── go.mod
-│
-├── go.sum
-│
-├── main.go
-│
 ├── docker-compose.yaml
-│
-├── .env <--- example of env file
-│
+├── env.example                <-- example env file (copy to .env)
+├── go.mod
+├── go.sum
+├── main.go
+├── mise.toml
 └── README.md
 ```
 
@@ -244,9 +288,11 @@ ari-stt-tts/
 
 # 🧪 **Current Limitations**
 
+* STT uses Deepgram's REST pre-recorded API (the request is transcribed once the recording ends) — no live streaming yet
 * RTP streaming not yet implemented (separate branch)
 * No retry mechanism for ARI reconnect
 * No multi-language support (English only for now)
+* The `ai` and `tts` packages are still being reworked
 
 ---
 
@@ -270,7 +316,7 @@ Please branch from `rtp`.
 
 # 📄 License
 
-This project is licensed under the **MIT License**.  
+This project is licensed under the **MIT License**.
 You are free to use, modify, distribute, and integrate this project into commercial or private software.
 
 See the full license in the [`LICENSE`](./LICENSE.md) file.
